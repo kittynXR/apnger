@@ -23,6 +23,7 @@ function ShowHelp {
     Write-Host "  -sizew          Width of the output image (default 160)"
     Write-Host "  -sizeh          Height of the output image (default 160)"
     Write-Host "  -targetSizeKB   Target file size in KB (default 512)"
+    Wrist-Host "  -gif            Output an animated gif alongside your png"
     
     Write-Host "`nExample: .\scriptname.ps1 -name 'cookie' -fps 24 -originalFps 60 -seqnum 1000 -seqlen 4 -colors 128 -sizew 120 -sizeh 120 -targetSizeKB 400"
     exit
