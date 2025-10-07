@@ -25,7 +25,7 @@ Convert your videos with greenscreen or transparent backgrounds into optimized e
 | **Twitch** | GIF | 112×112px | 1MB | 60 |
 | **Discord Sticker** | APNG | 320×320px | 512KB | Unlimited |
 | **Discord Emote** | GIF | 128×128px | 256KB | Unlimited |
-| **7TV** | WEBP | 128×128px | 2MB | Unlimited |
+| **7TV** | GIF | 128×128px | 3MB | Unlimited |
 
 ## 🚀 Quick Start
 
@@ -38,8 +38,12 @@ Convert your videos with greenscreen or transparent backgrounds into optimized e
 
 ### Installation
 
-#### Option 1: Download Pre-built Binary (Coming Soon)
+#### Option 1: Download Pre-built Binary
 Download the latest release for your platform from the [Releases](https://github.com/kittynXR/apnger/releases) page.
+
+**Windows:**
+- `Apnger Setup 1.0.0.exe` - Full installer with shortcuts
+- `Apnger 1.0.0.exe` - Portable version (no install)
 
 #### Option 2: Build from Source
 
@@ -70,19 +74,24 @@ npm run dev
 1. **Select Video**
    - Drag and drop a video file, or click to browse
    - Supported formats: MP4, MOV, AVI, WebM, MKV, FLV
+   - Choose output directory
 
-2. **Choose Output Directory**
-   - Select where you want the emotes saved
+2. **Preview**
+   - View sample frames from your video
+   - See live previews of all 4 emote formats
+   - Click "🔄 Regenerate" to refresh previews
 
-3. **Configure Options** (Optional)
-   - Enable chroma key removal if you have a greenscreen/bluescreen
-   - Pick the background color to remove
-   - Adjust similarity and blend for fine-tuning
-   - Choose quality preset (Maximum, Balanced, or Smallest)
+3. **Configure Options**
+   - Enable chroma key removal for greenscreen/bluescreen videos
+   - Use the color picker to select background color
+   - Adjust similarity (30% default) to control color removal range
+   - Adjust blend (10% default) for smoother edge transparency
+   - Live previews update as you adjust settings
 
 4. **Export**
-   - Click "Export All Formats"
-   - Wait for processing to complete
+   - Click "🚀 Export All Formats"
+   - Watch progress bars for each format
+   - Iterative optimization ensures files meet platform size limits
    - Find your emotes in the output directory!
 
 ## 🎨 Chroma Key Tips
@@ -129,21 +138,26 @@ npm run dist:linux
 
 ### Processing Pipeline
 
-1. **Video Analysis**: Extracts metadata (resolution, FPS, duration)
-2. **Chroma Key Removal**: FFmpeg chromakey filter removes background
-3. **Scaling & Padding**: Fits video to target dimensions with transparent padding
-4. **Frame Optimization**: Samples frames evenly if source exceeds limits
-5. **Palette Generation**: Creates optimal color palette (2-pass process)
-6. **Format Export**: Generates platform-specific files with appropriate compression
+1. **Video Analysis**: Extracts metadata (resolution, FPS, duration) using ffprobe
+2. **Preview Generation**: FFmpeg generates single-frame previews with all filters applied
+3. **Chroma Key Removal**: FFmpeg chromakey filter removes background color
+4. **Despill Filter**: Removes color fringing from edges (green/blue halos)
+5. **Center Cropping**: Scales to fill then crops to exact dimensions (no padding artifacts)
+6. **Frame Optimization**: Samples frames evenly if source exceeds platform limits
+7. **Iterative Optimization**: Discord formats loop until under size limits
+8. **Palette Generation**: 2-pass process for optimal GIF color quality
+9. **Multi-Format Export**: Generates all 4 platform-specific files simultaneously
 
 ### FFmpeg Filters Used
 
-- `chromakey`: Background color removal
-- `scale`: Resize while maintaining aspect ratio
-- `pad`: Add transparent padding to fit exact dimensions
+- `chromakey`: Background color removal with similarity/blend controls
+- `despill`: Removes color spill/fringing from edges
+- `eq`: Gamma and saturation correction post-despill
+- `scale`: Resize with force_original_aspect_ratio
+- `crop`: Exact dimension cropping (replaces pad for cleaner output)
 - `fps`: Frame rate control
-- `select`: Frame sampling for optimization
-- `palettegen`/`paletteuse`: High-quality color quantization
+- `select`: Frame sampling when exceeding max frame limits
+- `palettegen`/`paletteuse`: High-quality color quantization for GIFs
 
 ## 🤝 Contributing
 
@@ -174,11 +188,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🎯 Roadmap
 
-- [ ] Preview window with real-time chroma key visualization
+- [x] Preview window with real-time chroma key visualization
+- [x] Dark mode UI
+- [x] FFmpeg-powered accurate previews
+- [ ] Draggable crop tool for custom framing
 - [ ] Batch processing for multiple videos
 - [ ] Custom preset saving
-- [ ] Web version (browser-based processing)
-- [ ] Advanced FFmpeg parameter customization
+- [ ] Web version (browser-based processing with FFmpeg.wasm)
 - [ ] Built-in FFmpeg bundling (no separate install required)
 - [ ] Animation trimming/cropping tools
 - [ ] Frame-by-frame editor
