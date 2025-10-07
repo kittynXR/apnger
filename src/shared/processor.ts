@@ -1,6 +1,7 @@
 import { spawn } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import * as os from 'os';
 import { VideoInput, ProcessingOptions, ExportResult, EMOTE_SPECS, ProcessingProgress } from './types';
 
 export class VideoProcessor {
@@ -89,6 +90,86 @@ export class VideoProcessor {
         reject(err);
       });
     });
+  }
+
+  /**
+   * Generate a single preview frame for a specific platform
+   */
+  async generatePreview(
+    input: VideoInput,
+    platform: string,
+    options: ProcessingOptions
+  ): Promise<string> {
+    const spec = EMOTE_SPECS[platform];
+    const tempOutput = path.join(os.tmpdir(), `apnger_preview_${platform}_${Date.now()}.png`);
+
+    try {
+      // Extract frame at 33% of video duration
+      const timestamp = input.duration * 0.33;
+
+      // Build filter chain WITHOUT fps (single frame doesn't need fps filter)
+      const filters: string[] = [];
+
+      // Chroma key filter if enabled
+      if (options.chromaKey?.enabled) {
+        const color = options.chromaKey.color.replace('#', '0x');
+        const similarity = options.chromaKey.similarity || 0.3;
+        const blend = options.chromaKey.blend || 0.1;
+
+        filters.push(`chromakey=${color}:${similarity}:${blend}`);
+
+        // Despill filter
+        const colorLower = options.chromaKey.color.toLowerCase();
+        if (colorLower.includes('00ff00') || colorLower.includes('0f0')) {
+          filters.push(`despill=type=green:mix=0.5:expand=0`);
+        } else if (colorLower.includes('0000ff') || colorLower.includes('00f')) {
+          filters.push(`despill=type=blue:mix=0.5:expand=0`);
+        }
+
+        filters.push(`eq=gamma=1.1:saturation=1.05`);
+      }
+
+      // Apply custom crop if specified
+      if (options.crop) {
+        filters.push(`crop=${options.crop.width}:${options.crop.height}:${options.crop.x}:${options.crop.y}`);
+      }
+
+      // Scale and crop to exact size
+      filters.push(`scale=${spec.width}:${spec.height}:force_original_aspect_ratio=increase`);
+      filters.push(`crop=${spec.width}:${spec.height}`);
+
+      const filterChain = filters.join(',');
+
+      console.log(`Generating preview for ${platform} at timestamp ${timestamp}s with filters: ${filterChain}`);
+
+      // Generate single frame with FFmpeg
+      await this.runFFmpeg([
+        '-ss', String(timestamp),
+        '-i', input.path,
+        '-vf', filterChain,
+        '-frames:v', '1',
+        '-y', tempOutput
+      ]);
+
+      // Read file and convert to base64
+      const buffer = await fs.readFile(tempOutput);
+      const base64 = buffer.toString('base64');
+
+      // Cleanup
+      await fs.unlink(tempOutput);
+
+      console.log(`Preview generated for ${platform}, size: ${base64.length} bytes`);
+      return `data:image/png;base64,${base64}`;
+    } catch (error) {
+      console.error(`Error generating preview for ${platform}:`, error);
+      // Cleanup on error
+      try {
+        await fs.unlink(tempOutput);
+      } catch (err) {
+        // Ignore cleanup errors
+      }
+      throw error;
+    }
   }
 
   /**
@@ -213,7 +294,22 @@ export class VideoProcessor {
       const color = options.chromaKey.color.replace('#', '0x');
       const similarity = options.chromaKey.similarity || 0.3;
       const blend = options.chromaKey.blend || 0.1;
+
+      // Apply chroma key
       filters.push(`chromakey=${color}:${similarity}:${blend}`);
+
+      // Remove color spill from edges (fixes green fringing)
+      const colorLower = options.chromaKey.color.toLowerCase();
+      if (colorLower.includes('00ff00') || colorLower.includes('0f0')) {
+        // Green screen - remove green spill
+        filters.push(`despill=type=green:mix=0.5:expand=0`);
+      } else if (colorLower.includes('0000ff') || colorLower.includes('00f')) {
+        // Blue screen - remove blue spill
+        filters.push(`despill=type=blue:mix=0.5:expand=0`);
+      }
+
+      // Slight color correction to compensate for despill
+      filters.push(`eq=gamma=1.1:saturation=1.05`);
     }
 
     // Apply custom crop if specified

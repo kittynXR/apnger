@@ -9,6 +9,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectOutputDirectory: () => ipcRenderer.invoke('select-output-directory'),
   getVideoInfo: (filePath: string): Promise<VideoInput> =>
     ipcRenderer.invoke('get-video-info', filePath),
+  readVideoFile: (filePath: string): Promise<Buffer> =>
+    ipcRenderer.invoke('read-video-file', filePath),
+  generatePreview: (filePath: string, platform: string, options: ProcessingOptions): Promise<string> =>
+    ipcRenderer.invoke('generate-preview', filePath, platform, options),
   processVideo: (
     inputPath: string,
     outputDir: string,
@@ -32,6 +36,8 @@ declare global {
       selectVideoFile: () => Promise<string | null>;
       selectOutputDirectory: () => Promise<string | null>;
       getVideoInfo: (filePath: string) => Promise<VideoInput>;
+      readVideoFile: (filePath: string) => Promise<Buffer>;
+      generatePreview: (filePath: string, platform: string, options: ProcessingOptions) => Promise<string>;
       processVideo: (
         inputPath: string,
         outputDir: string,

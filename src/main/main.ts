@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, protocol } from 'electron';
 import * as path from 'path';
 import { VideoProcessor } from '../shared/processor';
 import { ProcessingOptions, ExportFormat } from '../shared/types';
@@ -47,6 +47,13 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Register custom protocol to serve local video files
+  protocol.registerFileProtocol('apnger-video', (request, callback) => {
+    const url = request.url.replace('apnger-video://', '');
+    const decodedPath = decodeURIComponent(url);
+    callback({ path: decodedPath });
+  });
+
   createWindow();
 
   app.on('activate', () => {
@@ -97,6 +104,28 @@ ipcMain.handle('get-video-info', async (_, filePath: string) => {
     return await processor.getVideoInfo(filePath);
   } catch (error) {
     console.error('Error getting video info:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('read-video-file', async (_, filePath: string) => {
+  try {
+    const fs = await import('fs/promises');
+    const buffer = await fs.readFile(filePath);
+    return buffer;
+  } catch (error) {
+    console.error('Error reading video file:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('generate-preview', async (_, filePath: string, platform: string, options: ProcessingOptions) => {
+  try {
+    const videoInfo = await processor.getVideoInfo(filePath);
+    const preview = await processor.generatePreview(videoInfo, platform, options);
+    return preview;
+  } catch (error) {
+    console.error(`Error generating preview for ${platform}:`, error);
     throw error;
   }
 });

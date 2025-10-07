@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { VideoInput, ProcessingOptions, ExportResult, ProcessingProgress } from '../shared/types';
+import { VideoInput, ProcessingOptions, ExportResult, ProcessingProgress, CropArea } from '../shared/types';
 
 interface AppState {
   // Video input
@@ -12,6 +12,12 @@ interface AppState {
   // Processing options
   options: ProcessingOptions;
 
+  // Preview & Crop state
+  cropArea: CropArea | null;
+  currentVideoTime: number;
+  previewThumbnails: Map<string, string>;
+  videoElement: HTMLVideoElement | null;
+
   // Processing state
   isProcessing: boolean;
   progress: Map<string, ProcessingProgress>;
@@ -23,6 +29,10 @@ interface AppState {
   setOutputDir: (dir: string | null) => void;
   setOptions: (options: ProcessingOptions) => void;
   updateOption: <K extends keyof ProcessingOptions>(key: K, value: ProcessingOptions[K]) => void;
+  setCropArea: (crop: CropArea | null) => void;
+  setCurrentVideoTime: (time: number) => void;
+  updatePreviewThumbnail: (platform: string, dataUrl: string) => void;
+  setVideoElement: (element: HTMLVideoElement | null) => void;
   setIsProcessing: (processing: boolean) => void;
   updateProgress: (progress: ProcessingProgress) => void;
   setResults: (results: ExportResult[]) => void;
@@ -44,6 +54,10 @@ export const useStore = create<AppState>((set) => ({
   videoInfo: null,
   outputDir: null,
   options: defaultOptions,
+  cropArea: null,
+  currentVideoTime: 0,
+  previewThumbnails: new Map(),
+  videoElement: null,
   isProcessing: false,
   progress: new Map(),
   results: [],
@@ -59,6 +73,25 @@ export const useStore = create<AppState>((set) => ({
         [key]: value,
       },
     })),
+  setCropArea: (crop) =>
+    set((state) => ({
+      cropArea: crop,
+      options: {
+        ...state.options,
+        crop: crop || undefined,
+      },
+    })),
+  setCurrentVideoTime: (time) => set({ currentVideoTime: time }),
+  updatePreviewThumbnail: (platform, dataUrl) =>
+    set((state) => {
+      const newThumbnails = new Map(state.previewThumbnails);
+      newThumbnails.set(platform, dataUrl);
+      return { previewThumbnails: newThumbnails };
+    }),
+  setVideoElement: (element) => {
+    console.log('Store: setVideoElement called with:', element);
+    set({ videoElement: element });
+  },
   setIsProcessing: (processing) => set({ isProcessing: processing }),
   updateProgress: (progress) =>
     set((state) => {
@@ -71,6 +104,10 @@ export const useStore = create<AppState>((set) => ({
     set({
       videoFile: null,
       videoInfo: null,
+      cropArea: null,
+      currentVideoTime: 0,
+      previewThumbnails: new Map(),
+      videoElement: null,
       progress: new Map(),
       results: [],
       isProcessing: false,

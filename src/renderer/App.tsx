@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
 import { useStore } from './store';
 import FileInput from './components/FileInput';
+import VideoPreview from './components/VideoPreview';
+import EmotePreviews from './components/EmotePreviews';
 import ProcessingOptions from './components/ProcessingOptions';
 import ProcessButton from './components/ProcessButton';
 import ProgressDisplay from './components/ProgressDisplay';
@@ -8,7 +10,7 @@ import ResultsDisplay from './components/ResultsDisplay';
 import './App.css';
 
 const App: React.FC = () => {
-  const { isProcessing, updateProgress } = useStore();
+  const { isProcessing, updateProgress, videoFile } = useStore();
 
   useEffect(() => {
     // Listen for processing progress updates from main process
@@ -36,13 +38,27 @@ const App: React.FC = () => {
           <FileInput />
         </div>
 
+        {videoFile && (
+          <>
+            <div className="card">
+              <h2>2. Video Preview</h2>
+              <VideoPreview />
+            </div>
+
+            <div className="card">
+              <h2>Emote Previews</h2>
+              <EmotePreviews />
+            </div>
+          </>
+        )}
+
         <div className="card">
-          <h2>2. Configure Options</h2>
+          <h2>{videoFile ? '3' : '2'}. Configure Options</h2>
           <ProcessingOptions />
         </div>
 
         <div className="card">
-          <h2>3. Export Emotes</h2>
+          <h2>{videoFile ? '4' : '3'}. Export Emotes</h2>
           <ProcessButton />
         </div>
 
