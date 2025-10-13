@@ -7,10 +7,12 @@ files:
   - dist/**/*
   - package.json
 extraResources:
-  - resources/**
+  - from: resources/bin
+    to: bin
+    filter:
+      - "*.exe"
 win:
   target:
-    - nsis
     - portable
   icon: build/icon.ico
 mac:
@@ -25,6 +27,3 @@ linux:
     - deb
   icon: build/icon.png
   category: Graphics
-nsis:
-  oneClick: false
-  allowToChangeInstallationDirectory: true

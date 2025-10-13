@@ -46,3 +46,6 @@ coverage/
 
 # Misc
 *.bak
+
+# FFmpeg binaries (too large for GitHub, bundled in releases only)
+resources/bin/*.exe

@@ -13,8 +13,9 @@ Apnger is a cross-platform desktop application (Electron + React + TypeScript) t
 - **Frontend**: React 19 + TypeScript 5
 - **Build Tool**: Vite 7
 - **State Management**: Zustand
-- **Video Processing**: FFmpeg (native binary)
+- **Video Processing**: FFmpeg 8.0 (bundled native binaries)
 - **Bundler**: electron-builder
+- **Distribution**: Portable executable with zero external dependencies
 
 ### Project Structure
 
@@ -22,7 +23,7 @@ Apnger is a cross-platform desktop application (Electron + React + TypeScript) t
 apnger/
 ├── src/
 │   ├── main/              # Electron main process
-│   │   ├── main.ts        # App entry, window management, IPC handlers
+│   │   ├── main.ts        # App entry, window management, IPC handlers, FFmpeg path resolution
 │   │   └── preload.ts     # Secure IPC bridge to renderer
 │   ├── renderer/          # React frontend
 │   │   ├── App.tsx        # Main app component
@@ -38,12 +39,14 @@ apnger/
 │   └── shared/            # Shared between main and renderer
 │       ├── types.ts       # TypeScript interfaces and emote specs
 │       └── processor.ts   # Core FFmpeg video processing logic
+├── resources/
+│   └── bin/               # Bundled FFmpeg binaries (ffmpeg.exe, ffprobe.exe)
 ├── dist/                  # Build output
 ├── package.json
 ├── tsconfig.json          # TypeScript config for renderer
 ├── tsconfig.main.json     # TypeScript config for main process
 ├── vite.config.ts         # Vite bundler config
-├── electron-builder.yml   # Distribution packaging config
+├── electron-builder.yml   # Distribution packaging config (portable exe only)
 └── apnger.ps1            # Legacy PowerShell script (deprecated)
 ```
 
@@ -166,11 +169,14 @@ Zustand store (`renderer/store.ts`) manages:
 ## Dependencies
 
 **Runtime**:
-- FFmpeg and ffprobe must be in system PATH (or bundled in electron-builder extraResources)
+- FFmpeg 8.0 and ffprobe are bundled with the application (no external dependencies required)
+- Binaries are automatically detected from `resources/bin/` in both development and production
+- Falls back to system PATH if bundled binaries are not found
 
 **Development**:
 - Node.js 18+
 - npm 9+
+- FFmpeg binaries must be present in `resources/bin/` for development builds
 
 ## Future Enhancements (Not Yet Implemented)
 

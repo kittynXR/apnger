@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog, protocol } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 import { VideoProcessor } from '../shared/processor';
 import { ProcessingOptions, ExportFormat } from '../shared/types';
 
@@ -15,8 +16,32 @@ if (process.env.NODE_ENV === 'development') {
   }
 }
 
+// Get FFmpeg paths - check bundled binaries first, then fall back to system PATH
+function getFFmpegPaths(): { ffmpeg: string; ffprobe: string } {
+  // In production, binaries are in resources/bin
+  // app.getAppPath() returns the app.asar location in production
+  const resourcesPath = process.env.NODE_ENV === 'development'
+    ? path.join(__dirname, '..', '..', 'resources', 'bin')
+    : path.join(process.resourcesPath, 'bin');
+
+  const ffmpegPath = path.join(resourcesPath, 'ffmpeg.exe');
+  const ffprobePath = path.join(resourcesPath, 'ffprobe.exe');
+
+  // Check if bundled binaries exist
+  if (fs.existsSync(ffmpegPath) && fs.existsSync(ffprobePath)) {
+    console.log('Using bundled FFmpeg binaries from:', resourcesPath);
+    return { ffmpeg: ffmpegPath, ffprobe: ffprobePath };
+  }
+
+  // Fall back to system PATH
+  console.log('Bundled FFmpeg not found, falling back to system PATH');
+  return { ffmpeg: 'ffmpeg', ffprobe: 'ffprobe' };
+}
+
+const ffmpegPaths = getFFmpegPaths();
+const processor = new VideoProcessor(ffmpegPaths.ffmpeg, ffmpegPaths.ffprobe);
+
 let mainWindow: BrowserWindow | null = null;
-const processor = new VideoProcessor();
 
 function createWindow() {
   mainWindow = new BrowserWindow({

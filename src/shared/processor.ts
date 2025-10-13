@@ -8,9 +8,10 @@ export class VideoProcessor {
   private ffmpegPath: string;
   private ffprobePath: string;
 
-  constructor(ffmpegPath = 'ffmpeg', ffprobePath = 'ffprobe') {
-    this.ffmpegPath = ffmpegPath;
-    this.ffprobePath = ffprobePath;
+  constructor(ffmpegPath?: string, ffprobePath?: string) {
+    // Use provided paths, or fall back to system PATH
+    this.ffmpegPath = ffmpegPath || 'ffmpeg';
+    this.ffprobePath = ffprobePath || 'ffprobe';
   }
 
   /**

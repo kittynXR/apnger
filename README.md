@@ -1,14 +1,15 @@
 # 🎨 Apnger
 
-**Multi-Platform Emote Converter**
+**Portable Multi-Platform Emote Converter**
 
-Convert your videos with greenscreen or transparent backgrounds into optimized emotes for Twitch, Discord, and 7TV with a single click!
+A standalone desktop application that converts videos with greenscreen or transparent backgrounds into optimized emotes for Twitch, Discord, and 7TV with a single click. No installation required, no dependencies to manage - just download and run!
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 
 ## ✨ Features
 
+- 🚀 **Fully Portable**: No installation required - FFmpeg bundled inside!
 - 🎬 **One-Click Export**: Convert to all 4 formats simultaneously
 - 🟢 **Chroma Key Support**: Remove greenscreen, bluescreen, or any color background
 - 📐 **Auto-Optimization**: Automatically fits each platform's requirements
@@ -17,6 +18,7 @@ Convert your videos with greenscreen or transparent backgrounds into optimized e
 - 🎨 **Visual Color Picker**: Easy background color selection
 - 📊 **Real-Time Progress**: Watch the conversion process in real-time
 - 💾 **Smart Compression**: Maximum quality within file size limits
+- 🔒 **Zero Dependencies**: Everything you need is included in one executable
 
 ## 📋 Supported Output Formats
 
@@ -29,45 +31,19 @@ Convert your videos with greenscreen or transparent backgrounds into optimized e
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Download & Run
 
-- **FFmpeg** must be installed and available in your system PATH
-  - Windows: Download from [ffmpeg.org](https://ffmpeg.org/download.html)
-  - macOS: `brew install ffmpeg`
-  - Linux: `sudo apt install ffmpeg` or equivalent
+1. **Download** the latest release for your platform:
+   - **Windows**: `Apnger-1.0.0.exe` (portable, no installation needed)
+   - **macOS**: `Apnger-1.0.0.dmg`
+   - **Linux**: `Apnger-1.0.0.AppImage`
 
-### Installation
+2. **Run** the application
+   - Windows: Double-click the .exe file
+   - macOS: Open the .dmg and drag to Applications
+   - Linux: Make executable (`chmod +x Apnger*.AppImage`) and run
 
-#### Option 1: Download Pre-built Binary
-Download the latest release for your platform from the [Releases](https://github.com/kittynXR/apnger/releases) page.
-
-**Windows:**
-- `Apnger Setup 1.0.0.exe` - Full installer with shortcuts
-- `Apnger 1.0.0.exe` - Portable version (no install)
-
-#### Option 2: Build from Source
-
-```bash
-# Clone the repository
-git clone https://github.com/kittynXR/apnger.git
-cd apnger
-
-# Install dependencies
-npm install
-
-# Build the application
-npm run build
-
-# Create distributable
-npm run dist
-```
-
-### Development Mode
-
-```bash
-# Start development mode with hot reload
-npm run dev
-```
+3. **Start converting!** No setup, no dependencies, no configuration required.
 
 ## 💡 How to Use
 
@@ -109,6 +85,33 @@ npm run dev
 - **Balanced** (Recommended): Good quality with reasonable file sizes
 - **Smallest File Size**: Aggressive compression, may reduce quality slightly
 
+## 🔧 Building from Source
+
+Want to build it yourself or contribute? Here's how:
+
+```bash
+# Clone the repository
+git clone https://github.com/kittynXR/apnger.git
+cd apnger
+
+# Install dependencies
+npm install
+
+# Download FFmpeg binaries (required for building)
+# See resources/bin/README.md for instructions
+
+# Development mode with hot reload
+npm run dev
+
+# Build for production
+npm run build
+
+# Create portable executable
+npm run dist
+```
+
+**Note**: FFmpeg binaries are not included in the repository due to file size. See `resources/bin/README.md` for download instructions. Pre-built releases include FFmpeg bundled.
+
 ## 📦 Project Structure
 
 ```
@@ -117,24 +120,22 @@ apnger/
 │   ├── main/              # Electron main process
 │   ├── renderer/          # React frontend
 │   └── shared/            # Shared code (processing logic)
+├── resources/
+│   └── bin/               # Bundled FFmpeg binaries
 ├── dist/                  # Build output
-└── release/               # Packaged installers
-```
-
-## 🔧 Building Installers
-
-```bash
-# Windows (NSIS + Portable)
-npm run dist:win
-
-# macOS (DMG + ZIP)
-npm run dist:mac
-
-# Linux (AppImage + DEB)
-npm run dist:linux
+└── release/               # Packaged executables
 ```
 
 ## 📝 Technical Details
+
+### Architecture
+
+Built with modern web technologies for a native desktop experience:
+- **Desktop Framework**: Electron 38+
+- **Frontend**: React 19 + TypeScript 5
+- **Build Tool**: Vite 7
+- **Video Processing**: FFmpeg 8.0 (bundled)
+- **State Management**: Zustand
 
 ### Processing Pipeline
 
@@ -179,6 +180,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - UI powered by [React](https://react.dev/)
 - Video processing by [FFmpeg](https://ffmpeg.org/)
 - State management via [Zustand](https://zustand-demo.pmnd.rs/)
+- FFmpeg builds from [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds)
 
 ## 📬 Support
 
@@ -191,14 +193,18 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Preview window with real-time chroma key visualization
 - [x] Dark mode UI
 - [x] FFmpeg-powered accurate previews
+- [x] Built-in FFmpeg bundling (no separate install required)
 - [ ] Draggable crop tool for custom framing
 - [ ] Batch processing for multiple videos
 - [ ] Custom preset saving
 - [ ] Web version (browser-based processing with FFmpeg.wasm)
-- [ ] Built-in FFmpeg bundling (no separate install required)
 - [ ] Animation trimming/cropping tools
 - [ ] Frame-by-frame editor
 
 ---
 
 Made with ❤️ for content creators and streamers
+
+### Legacy Script
+
+The original PowerShell script (`apnger.ps1`) is preserved in this repository for archival purposes but is no longer actively maintained. Please use the desktop application instead for the best experience.
