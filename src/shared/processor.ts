@@ -330,8 +330,10 @@ export class VideoProcessor {
         // Sample frames evenly
         const selectExpr = `not(mod(n,${Math.ceil(totalFrames / maxFrames)}))`;
         filters.push(`select='${selectExpr}'`);
-        filters.push(`setpts=N/TB/${targetFps}`);
+        // Reset PTS to maintain proper timing after frame selection
+        filters.push(`setpts=N/(${targetFps}*TB)`);
       } else {
+        // Use fps filter to match or reduce to target fps
         filters.push(`fps=${targetFps}`);
       }
     } else {
@@ -391,15 +393,15 @@ export class VideoProcessor {
     const spec = EMOTE_SPECS['discord-sticker'];
     const maxSize = spec.maxSize;
 
-    // Start with aggressive settings
-    let fps = Math.min(input.fps, 12);
+    // Start with more aggressive settings for Discord's strict 512KB limit
+    let fps = Math.min(input.fps, 10);
     let width = spec.width;
     let height = spec.height;
-    let colors = 256;
+    let colors = 192; // Start lower for better initial compression
     let compressionLevel = 9;
 
     let attempt = 0;
-    const maxAttempts = 10;
+    const maxAttempts = 15; // More attempts to find optimal settings
 
     while (attempt < maxAttempts) {
       attempt++;
@@ -440,20 +442,24 @@ export class VideoProcessor {
         return;
       }
 
-      // Reduce settings for next attempt
+      // Reduce settings for next attempt - more aggressive steps
       if (fps > 8) {
         fps -= 2;
-      } else if (colors > 128) {
-        colors = 128;
-      } else if (width > 240 || height > 240) {
-        width = Math.round(width * 0.9);
-        height = Math.round(height * 0.9);
+      } else if (colors > 96) {
+        colors = Math.max(64, colors - 32); // Reduce colors more aggressively
       } else if (fps > 6) {
+        fps -= 1;
+      } else if (width > 240 || height > 240) {
+        width = Math.round(width * 0.88);
+        height = Math.round(height * 0.88);
+      } else if (colors > 64) {
+        colors = 64;
+      } else if (fps > 4) {
         fps -= 1;
       } else {
         // Last resort: reduce dimensions more aggressively
-        width = Math.round(width * 0.85);
-        height = Math.round(height * 0.85);
+        width = Math.round(width * 0.82);
+        height = Math.round(height * 0.82);
       }
 
       // Cleanup palette from failed attempt
@@ -464,8 +470,8 @@ export class VideoProcessor {
       }
     }
 
-    console.warn(`Discord sticker could not be optimized to target size after ${maxAttempts} attempts`);
-    onProgress?.(100);
+    // If we exhausted all attempts, throw an error
+    throw new Error(`Discord sticker could not be optimized to 512KB limit after ${maxAttempts} attempts. Try a shorter video or lower quality source.`);
   }
 
   /**
