@@ -324,16 +324,18 @@ export class VideoProcessor {
     filters.push(`crop=${targetWidth}:${targetHeight}`);
 
     // Frame rate adjustment
-    if (maxFrames && input.fps > 0) {
+    // For videos with more frames than max, we need to calculate the effective fps
+    if (maxFrames && input.fps > 0 && input.duration > 0) {
       const totalFrames = Math.floor(input.duration * input.fps);
       if (totalFrames > maxFrames) {
-        // Sample frames evenly
-        const selectExpr = `not(mod(n,${Math.ceil(totalFrames / maxFrames)}))`;
-        filters.push(`select='${selectExpr}'`);
-        // Reset PTS to maintain proper timing after frame selection
-        filters.push(`setpts=N/(${targetFps}*TB)`);
+        // Calculate what fps would give us maxFrames over the duration
+        // effectiveFps = maxFrames / duration
+        const effectiveFps = maxFrames / input.duration;
+        // Use the lower of targetFps or effectiveFps to stay under frame limit
+        const finalFps = Math.min(targetFps, effectiveFps);
+        filters.push(`fps=${finalFps}`);
       } else {
-        // Use fps filter to match or reduce to target fps
+        // Use target fps normally
         filters.push(`fps=${targetFps}`);
       }
     } else {
