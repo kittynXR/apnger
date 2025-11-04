@@ -372,6 +372,21 @@ h3, h4, h5, h6 {
   gap: 1rem;
 }
 
+.frame-item {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.frame-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+}
+
 .sample-frame {
   position: relative;
   background: rgba(0, 0, 0, 0.3);
