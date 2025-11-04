@@ -27,7 +27,7 @@ export interface ProcessingOptions {
 }
 
 export interface ExportFormat {
-  name: 'twitch' | 'discord-sticker' | 'discord-emote' | '7tv';
+  name: 'twitch' | 'discord-sticker' | 'discord-emote' | '7tv' | '7tv-spritesheet';
   enabled: boolean;
 }
 
@@ -47,7 +47,7 @@ export interface ProcessingProgress {
 
 export interface EmoteSpec {
   name: string;
-  format: 'gif' | 'apng' | 'webp' | 'avif';
+  format: 'gif' | 'apng' | 'webp' | 'avif' | 'png';
   width: number;
   height: number;
   maxSize: number; // in bytes
@@ -55,6 +55,7 @@ export interface EmoteSpec {
   description: string;
   allowWide?: boolean; // If true, width can exceed height (for 7TV)
   maxAspectRatio?: number; // Max width:height ratio (e.g., 4 = 4:1)
+  spriteSheet?: boolean; // If true, this is a sprite sheet format
 }
 
 export const EMOTE_SPECS: Record<string, EmoteSpec> = {
@@ -92,5 +93,14 @@ export const EMOTE_SPECS: Record<string, EmoteSpec> = {
     description: 'GIF, flexible dimensions, high quality',
     allowWide: true,
     maxAspectRatio: 4, // Allow up to 4:1 width:height ratio
+  },
+  '7tv-spritesheet': {
+    name: '7TV Sprite Sheet',
+    format: 'png',
+    width: 1024,
+    height: 1024,
+    maxSize: 10 * 1024 * 1024, // 10MB limit (generous for PNG)
+    description: '1024×1024 sprite sheet with square frames, FPS/frame count in filename',
+    spriteSheet: true,
   },
 };

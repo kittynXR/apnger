@@ -216,11 +216,29 @@ export class VideoProcessor {
             }
           );
 
-          const stats = await fs.stat(outputPath);
+          // For sprite sheets, the file gets renamed to include FPS and frame count
+          // We need to find the actual file that was created
+          let actualPath = outputPath;
+          if (spec.spriteSheet) {
+            const dir = path.dirname(outputPath);
+            const files = await fs.readdir(dir);
+            const targetPattern = `${baseName}_`;
+            const matchingFile = files.find(f =>
+              f.startsWith(targetPattern) &&
+              f.includes('frames') &&
+              f.includes('fps') &&
+              f.endsWith(`.${spec.format}`)
+            );
+            if (matchingFile) {
+              actualPath = path.join(dir, matchingFile);
+            }
+          }
+
+          const stats = await fs.stat(actualPath);
 
           results.push({
             format: spec.name,
-            path: outputPath,
+            path: actualPath,
             size: stats.size,
             success: true,
           });
@@ -273,6 +291,9 @@ export class VideoProcessor {
         break;
       case '7tv':
         await this.export7TV(input, outputPath, options, tempDir, onProgress);
+        break;
+      case '7tv-spritesheet':
+        await this.export7TVSpriteSheet(input, outputPath, options, tempDir, onProgress);
         break;
     }
   }
@@ -597,6 +618,113 @@ export class VideoProcessor {
       '-y', outputPath
     ]);
 
+    onProgress?.(100);
+  }
+
+  /**
+   * Export 7TV Sprite Sheet format (1024×1024 with square frames in uniform grid)
+   */
+  private async export7TVSpriteSheet(
+    input: VideoInput,
+    outputPath: string,
+    options: ProcessingOptions,
+    tempDir: string,
+    onProgress?: (progress: number) => void
+  ): Promise<void> {
+    const sheetSize = 1024;
+
+    // Calculate total frames from video
+    const totalFrames = Math.floor(input.duration * input.fps);
+    const targetFps = input.fps; // Preserve original FPS
+
+    // Calculate optimal grid size (find the smallest square that fits all frames)
+    const gridSize = Math.ceil(Math.sqrt(totalFrames));
+    const frameSize = Math.floor(sheetSize / gridSize);
+
+    console.log(`7TV Sprite Sheet: ${totalFrames} frames, ${gridSize}×${gridSize} grid, ${frameSize}×${frameSize} per frame`);
+
+    // First, extract individual frames with chroma key and scaling applied
+    const framesDir = path.join(tempDir, '7tv_frames');
+    await fs.mkdir(framesDir, { recursive: true });
+
+    // Build filter chain for frame extraction
+    const filters: string[] = [];
+
+    // Chroma key filter if enabled
+    if (options.chromaKey?.enabled) {
+      const color = options.chromaKey.color.replace('#', '0x');
+      const similarity = options.chromaKey.similarity || 0.3;
+      const blend = options.chromaKey.blend || 0.1;
+
+      filters.push(`chromakey=${color}:${similarity}:${blend}`);
+
+      // Despill filter
+      const colorLower = options.chromaKey.color.toLowerCase();
+      if (colorLower.includes('00ff00') || colorLower.includes('0f0')) {
+        filters.push(`despill=type=green:mix=0.5:expand=0`);
+      } else if (colorLower.includes('0000ff') || colorLower.includes('00f')) {
+        filters.push(`despill=type=blue:mix=0.5:expand=0`);
+      }
+
+      filters.push(`eq=gamma=1.1:saturation=1.05`);
+    }
+
+    // Apply custom crop if specified
+    if (options.crop) {
+      filters.push(`crop=${options.crop.width}:${options.crop.height}:${options.crop.x}:${options.crop.y}`);
+    }
+
+    // Scale to frame size while maintaining aspect ratio and crop
+    filters.push(`scale=${frameSize}:${frameSize}:force_original_aspect_ratio=increase`);
+    filters.push(`crop=${frameSize}:${frameSize}`);
+
+    const filterChain = filters.join(',');
+
+    // Extract frames as individual PNG files
+    const framePattern = path.join(framesDir, 'frame_%04d.png');
+    await this.runFFmpeg([
+      '-i', input.path,
+      '-vf', filterChain,
+      '-vsync', '0',
+      '-y', framePattern
+    ]);
+
+    onProgress?.(50);
+
+    // Now use FFmpeg's tile filter to create the sprite sheet
+    // We need to re-read the frames and tile them
+    const actualFrames = (await fs.readdir(framesDir)).filter(f => f.endsWith('.png')).length;
+    console.log(`Extracted ${actualFrames} frames, creating ${gridSize}×${gridSize} sprite sheet`);
+
+    // Create a complex filter to tile the frames
+    // Use FFmpeg's tile filter which arranges frames in a grid
+    await this.runFFmpeg([
+      '-framerate', String(targetFps),
+      '-i', framePattern,
+      '-vf', `tile=${gridSize}x${gridSize},scale=${sheetSize}:${sheetSize}`,
+      '-frames:v', '1',
+      '-y', outputPath
+    ]);
+
+    // Rename file to include FPS and frame count in the filename
+    // Format: basename_XXframes_XXfps.png
+    const dir = path.dirname(outputPath);
+    const ext = path.extname(outputPath);
+    const basename = path.basename(outputPath, ext);
+    const baseParts = basename.split('_');
+    // Remove the format suffix if present (e.g., "_7tv-spritesheet")
+    const baseNameClean = baseParts.slice(0, -1).join('_');
+
+    const newFilename = `${baseNameClean}_${actualFrames}frames_${targetFps}fps${ext}`;
+    const newPath = path.join(dir, newFilename);
+
+    await fs.rename(outputPath, newPath);
+
+    // Update the outputPath reference for the caller
+    // Note: We need to return the new path somehow, but the function signature doesn't support it
+    // The processVideo method will need to handle this
+
+    console.log(`7TV Sprite Sheet created: ${newFilename}`);
     onProgress?.(100);
   }
 
