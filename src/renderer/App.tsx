@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useStore } from './store';
 import FileInput from './components/FileInput';
-import VideoPreview from './components/VideoPreview';
+import VideoEditor from './components/VideoEditor';
 import EmotePreviews from './components/EmotePreviews';
 import ProcessingOptions from './components/ProcessingOptions';
 import FormatSelector from './components/FormatSelector';
@@ -42,8 +42,8 @@ const App: React.FC = () => {
         {videoFile && (
           <>
             <div className="card">
-              <h2>2. Video Preview</h2>
-              <VideoPreview />
+              <h2>2. Video Editor</h2>
+              <VideoEditor />
             </div>
 
             <div className="card">

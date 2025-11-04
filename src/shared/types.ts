@@ -15,6 +15,19 @@ export interface CropArea {
   height: number; // crop height in pixels
 }
 
+export interface VideoSegment {
+  id: string;
+  startTime: number;  // seconds
+  endTime: number;    // seconds
+  enabled: boolean;
+}
+
+export interface CropPreset {
+  name: string;
+  aspectRatio: number | null;  // null = free aspect
+  label: string;
+}
+
 export interface ProcessingOptions {
   chromaKey?: {
     enabled: boolean;
@@ -24,6 +37,11 @@ export interface ProcessingOptions {
   };
   quality: 'maximum' | 'balanced' | 'smallest';
   crop?: CropArea;
+  trim?: {
+    start: number;  // seconds
+    end: number;    // seconds
+  };
+  segments?: VideoSegment[];  // For multi-segment mode
 }
 
 export interface ExportFormat {

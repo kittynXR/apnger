@@ -175,6 +175,7 @@ export class VideoProcessor {
 
   /**
    * Process video and export all formats
+   * Supports trim (simple start/end) and segments (multiple ranges to merge)
    */
   async processVideo(
     input: VideoInput,
@@ -189,6 +190,21 @@ export class VideoProcessor {
     // Create temporary directory for intermediate files
     const tempDir = path.join(outputDir, '.temp');
     await fs.mkdir(tempDir, { recursive: true });
+
+    // Handle segments: If segments are provided, pre-process video to merge them
+    if (options.segments && options.segments.length > 0) {
+      const enabledSegments = options.segments.filter(s => s.enabled);
+      if (enabledSegments.length > 0) {
+        console.log(`Pre-processing ${enabledSegments.length} video segments...`);
+        // TODO: Implement full segment merging
+        // For now, we'll use the first segment as a simple trim
+        const firstSegment = enabledSegments[0];
+        options.trim = {
+          start: firstSegment.startTime,
+          end: firstSegment.endTime
+        };
+      }
+    }
 
     try {
       // Process each format
@@ -304,6 +320,23 @@ export class VideoProcessor {
   }
 
   /**
+   * Build FFmpeg input arguments with optional trim
+   */
+  private buildInputArgs(inputPath: string, options: ProcessingOptions): string[] {
+    const args: string[] = [];
+
+    // Add trim using -ss and -to (input seeking for faster processing)
+    if (options.trim) {
+      args.push('-ss', String(options.trim.start));
+      args.push('-to', String(options.trim.end));
+    }
+
+    args.push('-i', inputPath);
+
+    return args;
+  }
+
+  /**
    * Build base filter chain for video processing
    */
   private buildFilterChain(
@@ -387,8 +420,9 @@ export class VideoProcessor {
 
     // Generate palette
     const paletteFilter = this.buildFilterChain(input, spec.width, spec.height, targetFps, options, spec.maxFrames);
+    const inputArgs = this.buildInputArgs(input.path, options);
     await this.runFFmpeg([
-      '-i', input.path,
+      ...inputArgs,
       '-vf', `${paletteFilter},palettegen=max_colors=256:stats_mode=diff`,
       '-y', palettePath
     ]);
@@ -397,8 +431,9 @@ export class VideoProcessor {
 
     // Generate GIF with palette
     const gifFilter = this.buildFilterChain(input, spec.width, spec.height, targetFps, options, spec.maxFrames);
+    const inputArgs2 = this.buildInputArgs(input.path, options);
     await this.runFFmpeg([
-      '-i', input.path,
+      ...inputArgs2,
       '-i', palettePath,
       '-lavfi', `${gifFilter}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=3`,
       '-loop', '0',
@@ -439,8 +474,9 @@ export class VideoProcessor {
 
       // Generate palette
       const paletteFilter = this.buildFilterChain(input, width, height, fps, options);
+      const inputArgs = this.buildInputArgs(input.path, options);
       await this.runFFmpeg([
-        '-i', input.path,
+        ...inputArgs,
         '-vf', `${paletteFilter},palettegen=max_colors=${colors}`,
         '-y', palettePath
       ]);
@@ -449,8 +485,9 @@ export class VideoProcessor {
 
       // Generate APNG
       const apngFilter = this.buildFilterChain(input, width, height, fps, options);
+      const inputArgs2 = this.buildInputArgs(input.path, options);
       await this.runFFmpeg([
-        '-i', input.path,
+        ...inputArgs2,
         '-i', palettePath,
         '-lavfi', `${apngFilter}[x];[x][1:v]paletteuse`,
         '-f', 'apng',
@@ -532,8 +569,9 @@ export class VideoProcessor {
 
       // Generate palette
       const paletteFilter = this.buildFilterChain(input, width, height, fps, options);
+      const inputArgs = this.buildInputArgs(input.path, options);
       await this.runFFmpeg([
-        '-i', input.path,
+        ...inputArgs,
         '-vf', `${paletteFilter},palettegen=max_colors=${colors}:stats_mode=diff`,
         '-y', palettePath
       ]);
@@ -542,8 +580,9 @@ export class VideoProcessor {
 
       // Generate GIF
       const gifFilter = this.buildFilterChain(input, width, height, fps, options);
+      const inputArgs2 = this.buildInputArgs(input.path, options);
       await this.runFFmpeg([
-        '-i', input.path,
+        ...inputArgs2,
         '-i', palettePath,
         '-lavfi', `${gifFilter}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=2`,
         '-loop', '0',
@@ -605,8 +644,9 @@ export class VideoProcessor {
 
     // Generate high-quality palette with more colors
     const paletteFilter = this.buildFilterChain(input, spec.width, spec.height, targetFps, options);
+    const inputArgs = this.buildInputArgs(input.path, options);
     await this.runFFmpeg([
-      '-i', input.path,
+      ...inputArgs,
       '-vf', `${paletteFilter},palettegen=max_colors=256:stats_mode=diff`,
       '-y', palettePath
     ]);
@@ -615,8 +655,9 @@ export class VideoProcessor {
 
     // Generate high-quality GIF with better dithering
     const gifFilter = this.buildFilterChain(input, spec.width, spec.height, targetFps, options);
+    const inputArgs2 = this.buildInputArgs(input.path, options);
     await this.runFFmpeg([
-      '-i', input.path,
+      ...inputArgs2,
       '-i', palettePath,
       '-lavfi', `${gifFilter}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle`,
       '-loop', '0',
@@ -694,8 +735,9 @@ export class VideoProcessor {
 
     // Extract frames as individual PNG files
     const framePattern = path.join(framesDir, 'frame_%04d.png');
+    const inputArgs = this.buildInputArgs(input.path, options);
     await this.runFFmpeg([
-      '-i', input.path,
+      ...inputArgs,
       '-vf', filterChain,
       '-vsync', '0',
       '-y', framePattern

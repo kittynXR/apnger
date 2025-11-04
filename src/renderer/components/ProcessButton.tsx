@@ -7,6 +7,9 @@ const ProcessButton: React.FC = () => {
     outputDir,
     options,
     enabledFormats,
+    editMode,
+    trimRange,
+    segments,
     isProcessing,
     setIsProcessing,
     setResults,
@@ -34,10 +37,19 @@ const ProcessButton: React.FC = () => {
           enabled: true,
         }));
 
+        // Include trim/segment data in options
+        const processingOptions = {
+          ...options,
+          // Add trim if in simple-trim mode and trimRange is set
+          ...(editMode === 'simple-trim' && trimRange ? { trim: trimRange } : {}),
+          // Add segments if in multi-segment mode
+          ...(editMode === 'multi-segment' && segments.length > 0 ? { segments } : {}),
+        };
+
         const results = await window.electronAPI.processVideo(
           videoFile,
           outputDir,
-          options,
+          processingOptions,
           formats as any
         );
 
