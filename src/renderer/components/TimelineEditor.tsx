@@ -20,6 +20,8 @@ const TimelineEditor: React.FC = () => {
   const [currentFrame, setCurrentFrame] = useState<string>('');
   const [isDragging, setIsDragging] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [segmentStart, setSegmentStart] = useState(0);
+  const [segmentEnd, setSegmentEnd] = useState(0);
   const timelineRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -142,16 +144,35 @@ const TimelineEditor: React.FC = () => {
     setTrimRange(null);
   };
 
-  // Add segment at current position
+  // Set segment start to current time
+  const setSegmentStartHere = () => {
+    setSegmentStart(currentVideoTime);
+  };
+
+  // Set segment end to current time
+  const setSegmentEndHere = () => {
+    setSegmentEnd(currentVideoTime);
+  };
+
+  // Add segment with the current start/end values
   const handleAddSegment = () => {
     const id = `segment-${Date.now()}`;
-    const start = trimRange?.start || 0;
-    const end = currentVideoTime;
+    const start = segmentStart;
+    const end = segmentEnd;
 
     if (end > start) {
       addSegment({ id, startTime: start, endTime: end, enabled: true });
-      setTrimRange({ start: currentVideoTime, end: videoInfo.duration });
+      // Reset for next segment
+      setSegmentStart(0);
+      setSegmentEnd(0);
+    } else {
+      alert('End time must be after start time');
     }
+  };
+
+  // Clear all segments
+  const clearAllSegments = () => {
+    segments.forEach(seg => removeSegment(seg.id));
   };
 
   // Calculate timeline marker positions
@@ -399,9 +420,34 @@ const TimelineEditor: React.FC = () => {
       {/* Segment Controls */}
       {editMode === 'multi-segment' && (
         <div>
-          <button className="button button-primary" onClick={handleAddSegment} style={{ marginBottom: '1rem' }}>
-            + Add Segment (from {formatTime(trimRange?.start || 0)} to current)
-          </button>
+          <div style={{ marginBottom: '1rem' }}>
+            <p style={{ color: '#a0a0c0', marginBottom: '0.75rem' }}>
+              Scrub to desired positions and mark segment boundaries:
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+              <button className="button button-primary" onClick={setSegmentStartHere}>
+                Mark Start ({formatTime(segmentStart)})
+              </button>
+              <button className="button button-primary" onClick={setSegmentEndHere}>
+                Mark End ({formatTime(segmentEnd)})
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                className="button button-primary"
+                onClick={handleAddSegment}
+                disabled={segmentEnd <= segmentStart}
+                style={{ flex: 1 }}
+              >
+                + Add Segment
+              </button>
+              {segments.length > 0 && (
+                <button className="button button-secondary" onClick={clearAllSegments}>
+                  Clear All Segments
+                </button>
+              )}
+            </div>
+          </div>
 
           {segments.length > 0 && (
             <div>

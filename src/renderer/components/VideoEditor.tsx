@@ -90,15 +90,9 @@ const VideoEditor: React.FC = () => {
       setVideoElement(videoRef.current);
     }
 
-    // Set default crop to center square
-    const size = Math.min(videoInfo.width, videoInfo.height);
-    const x = (videoInfo.width - size) / 2;
-    const y = (videoInfo.height - size) / 2;
-    setCropArea({ x, y, width: size, height: size });
-
     // Generate sample frames
     await generateSampleFrames();
-  }, [videoInfo, setCropArea, generateSampleFrames, setVideoElement]);
+  }, [videoInfo, generateSampleFrames, setVideoElement]);
 
   useEffect(() => {
     console.log('=== VideoEditor Render ===');
