@@ -180,7 +180,8 @@ export class VideoProcessor {
     input: VideoInput,
     outputDir: string,
     options: ProcessingOptions,
-    onProgress?: (progress: ProcessingProgress) => void
+    onProgress?: (progress: ProcessingProgress) => void,
+    enabledFormats?: string[]
   ): Promise<ExportResult[]> {
     const results: ExportResult[] = [];
     const baseName = path.basename(input.name, path.extname(input.name));
@@ -192,6 +193,10 @@ export class VideoProcessor {
     try {
       // Process each format
       for (const [formatKey, spec] of Object.entries(EMOTE_SPECS)) {
+        // Skip if format is not enabled
+        if (enabledFormats && !enabledFormats.includes(formatKey)) {
+          continue;
+        }
         onProgress?.({
           format: spec.name,
           stage: 'Processing',
@@ -632,10 +637,14 @@ export class VideoProcessor {
     onProgress?: (progress: number) => void
   ): Promise<void> {
     const sheetSize = 1024;
+    const maxFrames = 64; // 7TV sprite sheet limit
 
     // Calculate total frames from video
-    const totalFrames = Math.floor(input.duration * input.fps);
-    const targetFps = input.fps; // Preserve original FPS
+    const sourceTotalFrames = Math.floor(input.duration * input.fps);
+    const targetFps = sourceTotalFrames > maxFrames
+      ? maxFrames / input.duration  // Reduce FPS to stay under 64 frames
+      : input.fps; // Use original FPS if under limit
+    const totalFrames = Math.min(sourceTotalFrames, maxFrames);
 
     // Calculate optimal grid size (find the smallest square that fits all frames)
     const gridSize = Math.ceil(Math.sqrt(totalFrames));

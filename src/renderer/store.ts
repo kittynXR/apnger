@@ -12,6 +12,9 @@ interface AppState {
   // Processing options
   options: ProcessingOptions;
 
+  // Format selection
+  enabledFormats: Set<string>;
+
   // Preview & Crop state
   cropArea: CropArea | null;
   currentVideoTime: number;
@@ -29,6 +32,7 @@ interface AppState {
   setOutputDir: (dir: string | null) => void;
   setOptions: (options: ProcessingOptions) => void;
   updateOption: <K extends keyof ProcessingOptions>(key: K, value: ProcessingOptions[K]) => void;
+  toggleFormat: (format: string) => void;
   setCropArea: (crop: CropArea | null) => void;
   setCurrentVideoTime: (time: number) => void;
   updatePreviewThumbnail: (platform: string, dataUrl: string) => void;
@@ -54,6 +58,7 @@ export const useStore = create<AppState>((set) => ({
   videoInfo: null,
   outputDir: null,
   options: defaultOptions,
+  enabledFormats: new Set(['twitch', 'discord-sticker', 'discord-emote', '7tv', '7tv-spritesheet']), // All enabled by default
   cropArea: null,
   currentVideoTime: 0,
   previewThumbnails: new Map(),
@@ -73,6 +78,16 @@ export const useStore = create<AppState>((set) => ({
         [key]: value,
       },
     })),
+  toggleFormat: (format) =>
+    set((state) => {
+      const newFormats = new Set(state.enabledFormats);
+      if (newFormats.has(format)) {
+        newFormats.delete(format);
+      } else {
+        newFormats.add(format);
+      }
+      return { enabledFormats: newFormats };
+    }),
   setCropArea: (crop) =>
     set((state) => ({
       cropArea: crop,

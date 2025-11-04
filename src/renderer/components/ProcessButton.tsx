@@ -6,28 +6,33 @@ const ProcessButton: React.FC = () => {
     videoFile,
     outputDir,
     options,
+    enabledFormats,
     isProcessing,
     setIsProcessing,
     setResults,
     reset: resetStore,
   } = useStore();
 
-  const canProcess = videoFile && outputDir && !isProcessing;
+  const canProcess = videoFile && outputDir && !isProcessing && enabledFormats.size > 0;
 
   const handleProcess = async () => {
     if (!canProcess || !videoFile || !outputDir) return;
+
+    if (enabledFormats.size === 0) {
+      alert('Please select at least one export format.');
+      return;
+    }
 
     setIsProcessing(true);
     setResults([]);
 
     try {
       if (window.electronAPI) {
-        const formats = [
-          { name: 'twitch', enabled: true },
-          { name: 'discord-sticker', enabled: true },
-          { name: 'discord-emote', enabled: true },
-          { name: '7tv', enabled: true },
-        ];
+        // Convert Set to array of format objects
+        const formats = Array.from(enabledFormats).map(name => ({
+          name,
+          enabled: true,
+        }));
 
         const results = await window.electronAPI.processVideo(
           videoFile,
@@ -63,7 +68,7 @@ const ProcessButton: React.FC = () => {
         {isProcessing ? (
           <>⏳ Processing...</>
         ) : (
-          <>🚀 Export All Formats</>
+          <>🚀 Export {enabledFormats.size} Format{enabledFormats.size !== 1 ? 's' : ''}</>
         )}
       </button>
 

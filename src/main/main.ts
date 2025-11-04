@@ -164,10 +164,13 @@ ipcMain.handle(
     inputPath: string,
     outputDir: string,
     options: ProcessingOptions,
-    _formats: ExportFormat[]
+    formats: ExportFormat[]
   ) => {
     try {
       const videoInfo = await processor.getVideoInfo(inputPath);
+
+      // Extract enabled format keys
+      const enabledFormats = formats.map(f => f.name);
 
       const results = await processor.processVideo(
         videoInfo,
@@ -176,7 +179,8 @@ ipcMain.handle(
         (progress) => {
           // Send progress updates to renderer
           mainWindow?.webContents.send('processing-progress', progress);
-        }
+        },
+        enabledFormats
       );
 
       return results;

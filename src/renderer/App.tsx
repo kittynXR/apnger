@@ -4,6 +4,7 @@ import FileInput from './components/FileInput';
 import VideoPreview from './components/VideoPreview';
 import EmotePreviews from './components/EmotePreviews';
 import ProcessingOptions from './components/ProcessingOptions';
+import FormatSelector from './components/FormatSelector';
 import ProcessButton from './components/ProcessButton';
 import ProgressDisplay from './components/ProgressDisplay';
 import ResultsDisplay from './components/ResultsDisplay';
@@ -58,7 +59,12 @@ const App: React.FC = () => {
         </div>
 
         <div className="card">
-          <h2>{videoFile ? '4' : '3'}. Export Emotes</h2>
+          <h2>{videoFile ? '4' : '3'}. Select Export Formats</h2>
+          <FormatSelector />
+        </div>
+
+        <div className="card">
+          <h2>{videoFile ? '5' : '4'}. Export Emotes</h2>
           <ProcessButton />
         </div>
 
