@@ -641,9 +641,12 @@ export class VideoProcessor {
 
     // Calculate total frames from video
     const sourceTotalFrames = Math.floor(input.duration * input.fps);
-    const targetFps = sourceTotalFrames > maxFrames
+    let targetFps = sourceTotalFrames > maxFrames
       ? maxFrames / input.duration  // Reduce FPS to stay under 64 frames
       : input.fps; // Use original FPS if under limit
+
+    // Round targetFps to whole number for cleaner output
+    targetFps = Math.round(targetFps);
     const totalFrames = Math.min(sourceTotalFrames, maxFrames);
 
     // Calculate optimal grid size (find the smallest square that fits all frames)
