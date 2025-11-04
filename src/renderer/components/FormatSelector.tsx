@@ -3,7 +3,17 @@ import { useStore } from '../store';
 import { EMOTE_SPECS } from '../../shared/types';
 
 const FormatSelector: React.FC = () => {
-  const { enabledFormats, toggleFormat, selectAllFormats, selectNoFormats } = useStore();
+  const { enabledFormats, toggleFormat, selectAllFormats, selectNoFormats, videoInfo, cropArea } = useStore();
+
+  // Check if current crop is square (or close enough)
+  const isSquareCrop = cropArea
+    ? Math.abs(cropArea.width - cropArea.height) < 5 // Allow 5px tolerance
+    : videoInfo
+    ? Math.abs(videoInfo.width - videoInfo.height) < 5 // Check if original video is square
+    : false;
+
+  // Formats that require square aspect ratio
+  const squareOnlyFormats = ['twitch', 'discord-sticker', 'discord-emote', 'vrc-spritesheet'];
 
   return (
     <div className="format-selector">
@@ -22,20 +32,36 @@ const FormatSelector: React.FC = () => {
         Select which formats to generate (at least one required)
       </p>
       <div className="format-checkboxes">
-        {Object.entries(EMOTE_SPECS).map(([formatKey, spec]) => (
-          <div key={formatKey} className="format-checkbox-item">
-            <input
-              type="checkbox"
-              id={`format-${formatKey}`}
-              checked={enabledFormats.has(formatKey)}
-              onChange={() => toggleFormat(formatKey)}
-            />
-            <label htmlFor={`format-${formatKey}`}>
-              <span className="format-name">{spec.name}</span>
-              <span className="format-description">{spec.description}</span>
-            </label>
-          </div>
-        ))}
+        {Object.entries(EMOTE_SPECS).map(([formatKey, spec]) => {
+          const requiresSquare = squareOnlyFormats.includes(formatKey);
+          const isDisabled = requiresSquare && !isSquareCrop;
+
+          return (
+            <div
+              key={formatKey}
+              className="format-checkbox-item"
+              style={{
+                opacity: isDisabled ? 0.5 : 1,
+                cursor: isDisabled ? 'not-allowed' : 'auto',
+              }}
+            >
+              <input
+                type="checkbox"
+                id={`format-${formatKey}`}
+                checked={enabledFormats.has(formatKey)}
+                disabled={isDisabled}
+                onChange={() => toggleFormat(formatKey)}
+              />
+              <label htmlFor={`format-${formatKey}`} style={{ cursor: isDisabled ? 'not-allowed' : 'pointer' }}>
+                <span className="format-name">
+                  {spec.name}
+                  {requiresSquare && ' (Requires Square Crop)'}
+                </span>
+                <span className="format-description">{spec.description}</span>
+              </label>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

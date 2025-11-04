@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import Cropper, { Area } from 'react-easy-crop';
 import { useStore } from '../store';
 
@@ -29,7 +29,26 @@ const CropEditor: React.FC<CropEditorProps> = ({ previewImage }) => {
 
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [aspect, setAspect] = useState<number | undefined>(undefined);
+  const [aspect, setAspect] = useState<number | undefined>(1); // Default to square
+
+  // Initialize aspect ratio from stored preset on mount
+  useEffect(() => {
+    if (cropPreset) {
+      const preset = CROP_PRESETS.find(p => p.name === cropPreset);
+      if (preset) {
+        if (preset.aspectRatio === 0) {
+          setAspect(undefined);
+        } else {
+          setAspect(preset.aspectRatio);
+        }
+      }
+    } else {
+      // Default to square if no preset selected
+      setAspect(1);
+      setCropPreset('square');
+      applyCropPreset(1);
+    }
+  }, [cropPreset, setCropPreset, applyCropPreset]); // Only run on mount or when deps change
 
   const onCropComplete = useCallback(
     (croppedArea: Area, croppedAreaPixels: Area) => {
