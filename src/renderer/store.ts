@@ -58,7 +58,7 @@ export const useStore = create<AppState>((set) => ({
   videoInfo: null,
   outputDir: null,
   options: defaultOptions,
-  enabledFormats: new Set(['twitch', 'discord-sticker', 'discord-emote', '7tv', '7tv-spritesheet']), // All enabled by default
+  enabledFormats: new Set(['twitch', 'discord-sticker', 'discord-emote', '7tv', 'vrc-spritesheet']), // All enabled by default
   cropArea: null,
   currentVideoTime: 0,
   previewThumbnails: new Map(),

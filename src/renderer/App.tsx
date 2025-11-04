@@ -79,7 +79,7 @@ const App: React.FC = () => {
       </main>
 
       <footer className="app-footer">
-        <p>Supports Twitch, Discord Stickers, Discord Emotes, and 7TV</p>
+        <p>Supports Twitch, Discord Stickers, Discord Emotes, 7TV, and VRChat</p>
       </footer>
     </div>
   );

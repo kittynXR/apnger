@@ -297,8 +297,8 @@ export class VideoProcessor {
       case '7tv':
         await this.export7TV(input, outputPath, options, tempDir, onProgress);
         break;
-      case '7tv-spritesheet':
-        await this.export7TVSpriteSheet(input, outputPath, options, tempDir, onProgress);
+      case 'vrc-spritesheet':
+        await this.exportVRCSpriteSheet(input, outputPath, options, tempDir, onProgress);
         break;
     }
   }
@@ -627,9 +627,9 @@ export class VideoProcessor {
   }
 
   /**
-   * Export 7TV Sprite Sheet format (1024×1024 with square frames in uniform grid)
+   * Export VRChat Sprite Sheet format (1024×1024 with square frames in uniform grid)
    */
-  private async export7TVSpriteSheet(
+  private async exportVRCSpriteSheet(
     input: VideoInput,
     outputPath: string,
     options: ProcessingOptions,
@@ -637,7 +637,7 @@ export class VideoProcessor {
     onProgress?: (progress: number) => void
   ): Promise<void> {
     const sheetSize = 1024;
-    const maxFrames = 64; // 7TV sprite sheet limit
+    const maxFrames = 64; // VRChat sprite sheet limit
 
     // Calculate total frames from video
     const sourceTotalFrames = Math.floor(input.duration * input.fps);
@@ -653,10 +653,10 @@ export class VideoProcessor {
     const gridSize = Math.ceil(Math.sqrt(totalFrames));
     const frameSize = Math.floor(sheetSize / gridSize);
 
-    console.log(`7TV Sprite Sheet: ${totalFrames} frames, ${gridSize}×${gridSize} grid, ${frameSize}×${frameSize} per frame`);
+    console.log(`VRChat Sprite Sheet: ${totalFrames} frames, ${gridSize}×${gridSize} grid, ${frameSize}×${frameSize} per frame`);
 
     // First, extract individual frames with chroma key and scaling applied
-    const framesDir = path.join(tempDir, '7tv_frames');
+    const framesDir = path.join(tempDir, 'vrc_frames');
     await fs.mkdir(framesDir, { recursive: true });
 
     // Build filter chain for frame extraction
@@ -736,7 +736,7 @@ export class VideoProcessor {
     // Note: We need to return the new path somehow, but the function signature doesn't support it
     // The processVideo method will need to handle this
 
-    console.log(`7TV Sprite Sheet created: ${newFilename}`);
+    console.log(`VRChat Sprite Sheet created: ${newFilename}`);
     onProgress?.(100);
   }
 

@@ -27,7 +27,7 @@ export interface ProcessingOptions {
 }
 
 export interface ExportFormat {
-  name: 'twitch' | 'discord-sticker' | 'discord-emote' | '7tv' | '7tv-spritesheet';
+  name: 'twitch' | 'discord-sticker' | 'discord-emote' | '7tv' | 'vrc-spritesheet';
   enabled: boolean;
 }
 
@@ -94,13 +94,13 @@ export const EMOTE_SPECS: Record<string, EmoteSpec> = {
     allowWide: true,
     maxAspectRatio: 4, // Allow up to 4:1 width:height ratio
   },
-  '7tv-spritesheet': {
-    name: '7TV Sprite Sheet',
+  'vrc-spritesheet': {
+    name: 'VRChat Sprite Sheet',
     format: 'png',
     width: 1024,
     height: 1024,
     maxSize: 10 * 1024 * 1024, // 10MB limit (generous for PNG)
-    description: '1024×1024 sprite sheet with square frames, FPS/frame count in filename',
+    description: '1024×1024 sprite sheet with square frames for VRChat, max 64 frames',
     spriteSheet: true,
   },
 };
