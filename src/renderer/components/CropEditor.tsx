@@ -4,10 +4,11 @@ import { useStore } from '../store';
 
 const CROP_PRESETS = [
   { name: 'square', aspectRatio: 1, label: 'Square (1:1)' },
+  { name: '9:16', aspectRatio: 9 / 16, label: 'Phone (9:16)' },
   { name: '16:9', aspectRatio: 16 / 9, label: 'Widescreen (16:9)' },
   { name: '4:3', aspectRatio: 4 / 3, label: 'Standard (4:3)' },
   { name: '4:5', aspectRatio: 4 / 5, label: 'Portrait (4:5)' },
-  { name: 'free', aspectRatio: null, label: 'Free Aspect' },
+  { name: 'free', aspectRatio: 0, label: 'Free Aspect' },
 ];
 
 interface CropEditorProps {
@@ -45,8 +46,14 @@ const CropEditor: React.FC<CropEditorProps> = ({ previewImage }) => {
 
   const handlePresetClick = (preset: typeof CROP_PRESETS[0]) => {
     setCropPreset(preset.name);
-    setAspect(preset.aspectRatio || undefined);
-    applyCropPreset(preset.aspectRatio);
+    // For free aspect, set to undefined to allow free adjustment
+    // For fixed ratios, use the aspectRatio value (0 means free in our case)
+    if (preset.aspectRatio === 0) {
+      setAspect(undefined);
+    } else {
+      setAspect(preset.aspectRatio);
+    }
+    applyCropPreset(preset.aspectRatio === 0 ? null : preset.aspectRatio);
   };
 
   if (!videoInfo) {
@@ -98,7 +105,8 @@ const CropEditor: React.FC<CropEditorProps> = ({ previewImage }) => {
           image={previewImage}
           crop={crop}
           zoom={zoom}
-          aspect={aspect}
+          {...(aspect !== undefined ? { aspect } : {})}
+          restrictPosition={false}
           onCropChange={setCrop}
           onZoomChange={setZoom}
           onCropComplete={onCropComplete}
