@@ -7,6 +7,15 @@ const FileInput: React.FC = () => {
 
   const handleFileSelect = useCallback(async (file: string) => {
     setVideoFile(file);
+
+    // Automatically set output directory to the video's directory
+    // Handle both Windows (\) and Unix (/) path separators
+    const lastSlash = Math.max(file.lastIndexOf('\\'), file.lastIndexOf('/'));
+    if (lastSlash !== -1) {
+      const videoDir = file.substring(0, lastSlash);
+      setOutputDir(videoDir);
+    }
+
     if (window.electronAPI) {
       try {
         const info = await window.electronAPI.getVideoInfo(file);
@@ -17,7 +26,7 @@ const FileInput: React.FC = () => {
         setVideoFile(null);
       }
     }
-  }, [setVideoFile, setVideoInfo]);
+  }, [setVideoFile, setVideoInfo, setOutputDir]);
 
   const handleBrowse = async () => {
     if (window.electronAPI) {
