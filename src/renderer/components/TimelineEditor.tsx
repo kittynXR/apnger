@@ -22,8 +22,25 @@ const TimelineEditor: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [segmentStart, setSegmentStart] = useState(0);
   const [segmentEnd, setSegmentEnd] = useState(0);
+  const [timelineWidth, setTimelineWidth] = useState(1000);
   const timelineRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Update timeline width when ref is available or on resize
+  useEffect(() => {
+    const updateWidth = () => {
+      if (timelineRef.current) {
+        setTimelineWidth(timelineRef.current.clientWidth);
+      }
+    };
+
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+
+    return () => {
+      window.removeEventListener('resize', updateWidth);
+    };
+  }, []);
 
   if (!videoInfo) {
     return (
@@ -50,13 +67,13 @@ const TimelineEditor: React.FC = () => {
   };
 
   // Convert time to pixel position on timeline
-  const timeToPosition = (time: number, trackWidth: number): number => {
-    return (time / videoInfo.duration) * trackWidth;
+  const timeToPosition = (time: number): number => {
+    return (time / videoInfo.duration) * timelineWidth;
   };
 
   // Convert pixel position to time
-  const positionToTime = (x: number, trackWidth: number): number => {
-    return (x / trackWidth) * videoInfo.duration;
+  const positionToTime = (x: number): number => {
+    return (x / timelineWidth) * videoInfo.duration;
   };
 
   // Extract current frame to canvas
@@ -96,7 +113,7 @@ const TimelineEditor: React.FC = () => {
     if (!rect) return;
 
     const x = e.clientX - rect.left;
-    const time = snapToFrame(positionToTime(x, rect.width));
+    const time = snapToFrame(positionToTime(x));
     setCurrentVideoTime(Math.max(0, Math.min(time, videoInfo.duration)));
   };
 
@@ -114,7 +131,7 @@ const TimelineEditor: React.FC = () => {
       if (!rect) return;
 
       const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-      const time = snapToFrame(positionToTime(x, rect.width));
+      const time = snapToFrame(positionToTime(x));
       setCurrentVideoTime(Math.max(0, Math.min(time, videoInfo.duration)));
     };
 
@@ -129,7 +146,7 @@ const TimelineEditor: React.FC = () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, videoInfo.duration]);
+  }, [isDragging, videoInfo.duration, timelineWidth]);
 
   // Set trim points
   const setTrimStart = () => {
@@ -287,7 +304,7 @@ const TimelineEditor: React.FC = () => {
         >
           {/* Time Markers */}
           {timeMarkers.map((time) => {
-            const pos = timeToPosition(time, timelineRef.current?.clientWidth || 1000);
+            const pos = timeToPosition(time);
             return (
               <div
                 key={time}
@@ -322,8 +339,8 @@ const TimelineEditor: React.FC = () => {
             <div
               style={{
                 position: 'absolute',
-                left: `${timeToPosition(trimRange.start, timelineRef.current?.clientWidth || 1000)}px`,
-                width: `${timeToPosition(trimRange.end - trimRange.start, timelineRef.current?.clientWidth || 1000)}px`,
+                left: `${timeToPosition(trimRange.start)}px`,
+                width: `${timeToPosition(trimRange.end - trimRange.start)}px`,
                 top: 0,
                 bottom: 0,
                 background: 'rgba(102, 126, 234, 0.3)',
@@ -342,8 +359,8 @@ const TimelineEditor: React.FC = () => {
                   key={segment.id}
                   style={{
                     position: 'absolute',
-                    left: `${timeToPosition(segment.startTime, timelineRef.current?.clientWidth || 1000)}px`,
-                    width: `${timeToPosition(segment.endTime - segment.startTime, timelineRef.current?.clientWidth || 1000)}px`,
+                    left: `${timeToPosition(segment.startTime)}px`,
+                    width: `${timeToPosition(segment.endTime - segment.startTime)}px`,
                     top: '10px',
                     height: '40px',
                     background: 'rgba(102, 126, 234, 0.4)',
@@ -359,7 +376,7 @@ const TimelineEditor: React.FC = () => {
             onMouseDown={handlePlayheadMouseDown}
             style={{
               position: 'absolute',
-              left: `${timeToPosition(currentVideoTime, timelineRef.current?.clientWidth || 1000)}px`,
+              left: `${timeToPosition(currentVideoTime)}px`,
               top: '-10px',
               bottom: '-10px',
               width: '3px',

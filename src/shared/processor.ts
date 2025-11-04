@@ -191,19 +191,35 @@ export class VideoProcessor {
     const tempDir = path.join(outputDir, '.temp');
     await fs.mkdir(tempDir, { recursive: true });
 
-    // Handle segments: If segments are provided, pre-process video to merge them
+    // Handle segments: If multiple segments are provided, merge them into a temp video first
+    let inputPathToUse = input.path;
     if (options.segments && options.segments.length > 0) {
-      const enabledSegments = options.segments.filter(s => s.enabled);
-      if (enabledSegments.length > 0) {
-        console.log(`Pre-processing ${enabledSegments.length} video segments...`);
-        // TODO: Implement full segment merging
-        // For now, we'll use the first segment as a simple trim
+      const enabledSegments = options.segments.filter(s => s.enabled).sort((a, b) => a.startTime - b.startTime);
+
+      if (enabledSegments.length > 1) {
+        // Multiple segments - need to merge
+        console.log(`Merging ${enabledSegments.length} video segments...`);
+        const mergedPath = await this.mergeSegments(input, enabledSegments, tempDir, onProgress);
+        inputPathToUse = mergedPath;
+
+        // Clear segments and trim from options since they're already applied
+        options.segments = undefined;
+        options.trim = undefined;
+      } else if (enabledSegments.length === 1) {
+        // Single segment - use as simple trim
         const firstSegment = enabledSegments[0];
         options.trim = {
           start: firstSegment.startTime,
           end: firstSegment.endTime
         };
+        options.segments = undefined;
       }
+    }
+
+    // Update input path if we created a merged video
+    if (inputPathToUse !== input.path) {
+      // Update input to point to merged video
+      input = { ...input, path: inputPathToUse };
     }
 
     try {
@@ -287,6 +303,64 @@ export class VideoProcessor {
     }
 
     return results;
+  }
+
+  /**
+   * Merge multiple video segments into a single temporary video file
+   */
+  private async mergeSegments(
+    input: VideoInput,
+    segments: { startTime: number; endTime: number }[],
+    tempDir: string,
+    onProgress?: (progress: ProcessingProgress) => void
+  ): Promise<string> {
+    const mergedPath = path.join(tempDir, 'merged_segments.mp4');
+
+    onProgress?.({
+      format: 'Segment Merging',
+      stage: 'Processing',
+      progress: 0,
+    });
+
+    // Build FFmpeg complex filter to trim and concatenate segments
+    // Example for 3 segments:
+    // [0:v]trim=0:5,setpts=PTS-STARTPTS[v0];
+    // [0:v]trim=10:15,setpts=PTS-STARTPTS[v1];
+    // [0:v]trim=20:25,setpts=PTS-STARTPTS[v2];
+    // [v0][v1][v2]concat=n=3:v=1:a=0[out]
+
+    const trimFilters: string[] = [];
+    const concatInputs: string[] = [];
+
+    segments.forEach((segment, index) => {
+      const streamLabel = `v${index}`;
+      trimFilters.push(
+        `[0:v]trim=start=${segment.startTime}:end=${segment.endTime},setpts=PTS-STARTPTS[${streamLabel}]`
+      );
+      concatInputs.push(`[${streamLabel}]`);
+    });
+
+    const concatFilter = `${concatInputs.join('')}concat=n=${segments.length}:v=1:a=0[out]`;
+    const filterComplex = [...trimFilters, concatFilter].join(';');
+
+    console.log(`Merging ${segments.length} segments with filter: ${filterComplex}`);
+
+    // Run FFmpeg to merge segments
+    await this.runFFmpeg([
+      '-i', input.path,
+      '-filter_complex', filterComplex,
+      '-map', '[out]',
+      '-y', mergedPath
+    ]);
+
+    onProgress?.({
+      format: 'Segment Merging',
+      stage: 'Complete',
+      progress: 100,
+    });
+
+    console.log(`Merged ${segments.length} segments into: ${mergedPath}`);
+    return mergedPath;
   }
 
   /**
