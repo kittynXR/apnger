@@ -42,10 +42,11 @@ export interface ProcessingOptions {
     end: number;    // seconds
   };
   segments?: VideoSegment[];  // For multi-segment mode
+  webGifResolution?: 'original' | '720p' | '480p' | '240p';
 }
 
 export interface ExportFormat {
-  name: 'twitch' | 'discord-sticker' | 'discord-emote' | '7tv' | 'vrc-spritesheet';
+  name: 'twitch' | 'discord-sticker' | 'discord-emote' | '7tv' | 'vrc-spritesheet' | 'web-gif';
   enabled: boolean;
 }
 
@@ -120,5 +121,14 @@ export const EMOTE_SPECS: Record<string, EmoteSpec> = {
     maxSize: 10 * 1024 * 1024, // 10MB limit (generous for PNG)
     description: '1024×1024 sprite sheet with square frames for VRChat, max 64 frames',
     spriteSheet: true,
+  },
+  'web-gif': {
+    name: 'Web GIF',
+    format: 'gif',
+    width: 0,  // Will be set based on resolution option
+    height: 0, // Will be set based on resolution option
+    maxSize: 50 * 1024 * 1024, // 50MB (generous for web)
+    description: 'High-quality GIF for web/imageboards, preserves FPS and frame count',
+    allowWide: true,
   },
 };

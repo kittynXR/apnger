@@ -2,7 +2,7 @@ import React from 'react';
 import { useStore } from '../store';
 
 const ProcessingOptions: React.FC = () => {
-  const { options, updateOption } = useStore();
+  const { options, updateOption, videoInfo } = useStore();
 
   const handleChromaKeyToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
     updateOption('chromaKey', {
@@ -35,6 +35,24 @@ const ProcessingOptions: React.FC = () => {
   const handleQualityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     updateOption('quality', e.target.value as 'maximum' | 'balanced' | 'smallest');
   };
+
+  const handleWebGifResolutionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    updateOption('webGifResolution', e.target.value as 'original' | '720p' | '480p' | '240p');
+  };
+
+  // Calculate which resolution options to show based on video size
+  const getAvailableResolutions = () => {
+    if (!videoInfo) return ['original'];
+
+    const resolutions = ['original'];
+    if (videoInfo.height >= 720) resolutions.push('720p');
+    if (videoInfo.height >= 480) resolutions.push('480p');
+    if (videoInfo.height >= 240) resolutions.push('240p');
+
+    return resolutions;
+  };
+
+  const availableResolutions = getAvailableResolutions();
 
   return (
     <div>
@@ -123,6 +141,24 @@ const ProcessingOptions: React.FC = () => {
         </select>
         <small style={{ color: '#666', marginTop: '0.5rem', display: 'block' }}>
           Affects frame rate and compression settings
+        </small>
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="webgif-resolution">Web GIF Resolution</label>
+        <select
+          id="webgif-resolution"
+          value={options.webGifResolution || 'original'}
+          onChange={handleWebGifResolutionChange}
+        >
+          {availableResolutions.map((res) => (
+            <option key={res} value={res}>
+              {res === 'original' ? 'Original (No Scaling)' : res.toUpperCase()}
+            </option>
+          ))}
+        </select>
+        <small style={{ color: '#666', marginTop: '0.5rem', display: 'block' }}>
+          Resolution for Web GIF format only (preserves original FPS and frame count)
         </small>
       </div>
     </div>

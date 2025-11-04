@@ -316,6 +316,9 @@ export class VideoProcessor {
       case 'vrc-spritesheet':
         await this.exportVRCSpriteSheet(input, outputPath, options, tempDir, onProgress);
         break;
+      case 'web-gif':
+        await this.exportWebGIF(input, outputPath, options, tempDir, onProgress);
+        break;
     }
   }
 
@@ -779,6 +782,104 @@ export class VideoProcessor {
     // The processVideo method will need to handle this
 
     console.log(`VRChat Sprite Sheet created: ${newFilename}`);
+    onProgress?.(100);
+  }
+
+  /**
+   * Export Web GIF format (high quality, preserves original FPS and frame count)
+   */
+  private async exportWebGIF(
+    input: VideoInput,
+    outputPath: string,
+    options: ProcessingOptions,
+    tempDir: string,
+    onProgress?: (progress: number) => void
+  ): Promise<void> {
+    // Calculate target dimensions based on resolution option
+    const resolution = options.webGifResolution || 'original';
+    let targetWidth = input.width;
+    let targetHeight = input.height;
+
+    if (resolution !== 'original') {
+      const resolutionMap = {
+        '720p': 720,
+        '480p': 480,
+        '240p': 240,
+      };
+      const targetRes = resolutionMap[resolution];
+
+      // Scale down to target resolution while maintaining aspect ratio
+      if (input.height > targetRes) {
+        const aspectRatio = input.width / input.height;
+        targetHeight = targetRes;
+        targetWidth = Math.floor(targetRes * aspectRatio);
+      } else {
+        // Video is already smaller than target, keep original
+        targetWidth = input.width;
+        targetHeight = input.height;
+      }
+    }
+
+    const targetFps = input.fps; // Preserve original FPS
+    const palettePath = path.join(tempDir, 'palette_webgif.png');
+
+    // Build filters (chroma key if enabled, plus optional crop, then scale)
+    const filters: string[] = [];
+
+    // Chroma key filter if enabled
+    if (options.chromaKey?.enabled) {
+      const color = options.chromaKey.color.replace('#', '0x');
+      const similarity = options.chromaKey.similarity || 0.3;
+      const blend = options.chromaKey.blend || 0.1;
+
+      filters.push(`chromakey=${color}:${similarity}:${blend}`);
+
+      // Despill filter
+      const colorLower = options.chromaKey.color.toLowerCase();
+      if (colorLower.includes('00ff00') || colorLower.includes('0f0')) {
+        filters.push(`despill=type=green:mix=0.5:expand=0`);
+      } else if (colorLower.includes('0000ff') || colorLower.includes('00f')) {
+        filters.push(`despill=type=blue:mix=0.5:expand=0`);
+      }
+
+      filters.push(`eq=gamma=1.1:saturation=1.05`);
+    }
+
+    // Apply custom crop if specified
+    if (options.crop) {
+      filters.push(`crop=${options.crop.width}:${options.crop.height}:${options.crop.x}:${options.crop.y}`);
+    }
+
+    // Scale to target resolution if not original
+    if (resolution !== 'original') {
+      filters.push(`scale=${targetWidth}:${targetHeight}`);
+    }
+
+    // Add FPS filter to maintain original frame rate
+    filters.push(`fps=${targetFps}`);
+
+    const filterChain = filters.join(',');
+
+    // Generate high-quality palette
+    const inputArgs = this.buildInputArgs(input.path, options);
+    await this.runFFmpeg([
+      ...inputArgs,
+      '-vf', `${filterChain},palettegen=max_colors=256:stats_mode=diff`,
+      '-y', palettePath
+    ]);
+
+    onProgress?.(50);
+
+    // Generate GIF with palette
+    const inputArgs2 = this.buildInputArgs(input.path, options);
+    await this.runFFmpeg([
+      ...inputArgs2,
+      '-i', palettePath,
+      '-lavfi', `${filterChain}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5`,
+      '-loop', '0',
+      '-y', outputPath
+    ]);
+
     onProgress?.(100);
   }
 

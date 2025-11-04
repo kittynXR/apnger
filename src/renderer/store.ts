@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { VideoInput, ProcessingOptions, ExportResult, ProcessingProgress, CropArea, VideoSegment, CropPreset } from '../shared/types';
+import { VideoInput, ProcessingOptions, ExportResult, ProcessingProgress, CropArea, VideoSegment, CropPreset, EMOTE_SPECS } from '../shared/types';
 
 interface AppState {
   // Video input
@@ -41,6 +41,8 @@ interface AppState {
   setOptions: (options: ProcessingOptions) => void;
   updateOption: <K extends keyof ProcessingOptions>(key: K, value: ProcessingOptions[K]) => void;
   toggleFormat: (format: string) => void;
+  selectAllFormats: () => void;
+  selectNoFormats: () => void;
 
   // Timeline actions
   setEditMode: (mode: 'simple-trim' | 'multi-segment') => void;
@@ -74,6 +76,7 @@ const defaultOptions: ProcessingOptions = {
     blend: 0.1,
   },
   quality: 'balanced',
+  webGifResolution: 'original',
 };
 
 export const useStore = create<AppState>((set) => ({
@@ -81,7 +84,7 @@ export const useStore = create<AppState>((set) => ({
   videoInfo: null,
   outputDir: null,
   options: defaultOptions,
-  enabledFormats: new Set(['twitch', 'discord-sticker', 'discord-emote', '7tv', 'vrc-spritesheet']), // All enabled by default
+  enabledFormats: new Set(['twitch', 'discord-sticker', 'discord-emote', '7tv', 'vrc-spritesheet', 'web-gif']), // All enabled by default
 
   // Timeline editing state
   segments: [],
@@ -121,6 +124,14 @@ export const useStore = create<AppState>((set) => ({
         newFormats.add(format);
       }
       return { enabledFormats: newFormats };
+    }),
+  selectAllFormats: () =>
+    set({
+      enabledFormats: new Set(Object.keys(EMOTE_SPECS)),
+    }),
+  selectNoFormats: () =>
+    set({
+      enabledFormats: new Set(),
     }),
 
   // Timeline actions

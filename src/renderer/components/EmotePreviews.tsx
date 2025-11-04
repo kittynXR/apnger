@@ -64,6 +64,7 @@ const EmotePreviews: React.FC = () => {
       'discord-emote': '#404eed',
       '7tv': '#00d05f',
       'vrc-spritesheet': '#1f8dd6',
+      'web-gif': '#ff6b6b',
     };
     return colors[platform] || '#667eea';
   };
