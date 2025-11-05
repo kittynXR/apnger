@@ -14,7 +14,7 @@ extraResources:
 win:
   target:
     - portable
-  icon: build/icon.ico
+  icon: build/icon.png
 mac:
   target:
     - dmg
