@@ -823,6 +823,9 @@ export class VideoProcessor {
     filters.push(`scale=${frameSize}:${frameSize}:force_original_aspect_ratio=increase`);
     filters.push(`crop=${frameSize}:${frameSize}`);
 
+    // Add FPS filter to reduce frame rate if needed (to stay under 64 frames)
+    filters.push(`fps=${targetFps}`);
+
     const filterChain = filters.join(',');
 
     // Extract frames as individual PNG files
@@ -842,9 +845,9 @@ export class VideoProcessor {
     const actualFrames = (await fs.readdir(framesDir)).filter(f => f.endsWith('.png')).length;
     console.log(`Extracted ${actualFrames} frames, creating ${gridSize}×${gridSize} sprite sheet`);
 
-    // Use source FPS for filename - that's the playback speed
-    const actualFps = input.fps;
-    console.log(`Sprite sheet: ${actualFrames} frames at ${actualFps}fps (source video FPS)`);
+    // Use targetFps - this is the FPS we used during extraction
+    const actualFps = targetFps;
+    console.log(`Sprite sheet: ${actualFrames} frames at ${actualFps}fps`);
 
     // Create a complex filter to tile the frames
     // Use FFmpeg's tile filter which arranges frames in a grid
