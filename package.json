@@ -1,6 +1,6 @@
 {
   "name": "apnger",
-  "version": "2.7.1",
+  "version": "2.7.2",
   "description": "Portable desktop app for converting videos to optimized emotes for Twitch, Discord, and 7TV - FFmpeg bundled, zero dependencies",
   "main": "dist/main/main/main.js",
   "scripts": {
