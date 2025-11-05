@@ -766,24 +766,18 @@ export class VideoProcessor {
       ? (options.trim.end - options.trim.start)
       : input.duration;
 
-    console.log(`[VRC Sprite] input.duration: ${input.duration}s, input.fps: ${input.fps}, effectiveDuration: ${effectiveDuration}s`);
+    // Calculate FPS needed to get EXACTLY maxFrames (64) over the duration
+    // This matches the logic from buildFilterChain
+    const totalFrames = Math.floor(effectiveDuration * input.fps);
+    const extractFps = totalFrames > maxFrames
+      ? maxFrames / effectiveDuration  // Exact FPS to output exactly 64 frames
+      : input.fps; // Keep original if under limit
 
-    // Calculate total frames from TRIMMED video (not original)
-    const sourceTotalFrames = Math.floor(effectiveDuration * input.fps);
-    console.log(`[VRC Sprite] sourceTotalFrames: ${sourceTotalFrames}, maxFrames: ${maxFrames}`);
+    console.log(`[VRC Sprite] Duration: ${effectiveDuration}s, Total frames: ${totalFrames}, Extract FPS: ${extractFps}`);
 
-    let targetFps = sourceTotalFrames > maxFrames
-      ? maxFrames / effectiveDuration  // Reduce FPS to stay under 64 frames (use trimmed duration)
-      : input.fps; // Use original FPS if under limit
-
-    // Round targetFps to whole number for cleaner output
-    targetFps = Math.round(targetFps);
-    console.log(`[VRC Sprite] targetFps calculated: ${targetFps}`);
-
-    const totalFrames = Math.min(sourceTotalFrames, maxFrames);
-
-    // Calculate optimal grid size (find the smallest square that fits all frames)
-    const gridSize = Math.ceil(Math.sqrt(totalFrames));
+    // Calculate optimal grid size for max 64 frames
+    const expectedFrames = Math.min(totalFrames, maxFrames);
+    const gridSize = Math.ceil(Math.sqrt(expectedFrames));
     const frameSize = Math.floor(sheetSize / gridSize);
 
     console.log(`VRChat Sprite Sheet: ${totalFrames} frames, ${gridSize}×${gridSize} grid, ${frameSize}×${frameSize} per frame`);
@@ -823,8 +817,8 @@ export class VideoProcessor {
     filters.push(`scale=${frameSize}:${frameSize}:force_original_aspect_ratio=increase`);
     filters.push(`crop=${frameSize}:${frameSize}`);
 
-    // Add FPS filter to reduce frame rate if needed (to stay under 64 frames)
-    filters.push(`fps=${targetFps}`);
+    // Add FPS filter to extract exactly the right number of frames
+    filters.push(`fps=${extractFps}`);
 
     const filterChain = filters.join(',');
 
@@ -845,14 +839,15 @@ export class VideoProcessor {
     const actualFrames = (await fs.readdir(framesDir)).filter(f => f.endsWith('.png')).length;
     console.log(`Extracted ${actualFrames} frames, creating ${gridSize}×${gridSize} sprite sheet`);
 
-    // Use targetFps - this is the FPS we used during extraction
-    const actualFps = targetFps;
-    console.log(`Sprite sheet: ${actualFrames} frames at ${actualFps}fps`);
+    // Calculate the FPS for the filename based on actual extracted frames
+    // FPS = frames / duration (how fast to play the frames)
+    const filenameFps = Math.round(actualFrames / effectiveDuration);
+    console.log(`Filename: ${actualFrames} frames at ${filenameFps}fps over ${effectiveDuration}s`);
 
     // Create a complex filter to tile the frames
     // Use FFmpeg's tile filter which arranges frames in a grid
     await this.runFFmpeg([
-      '-framerate', String(actualFps),
+      '-framerate', String(filenameFps),
       '-i', framePattern,
       '-vf', `tile=${gridSize}x${gridSize},scale=${sheetSize}:${sheetSize}`,
       '-frames:v', '1',
@@ -868,7 +863,7 @@ export class VideoProcessor {
     // Remove the format suffix if present (e.g., "_vrc-spritesheet")
     const baseNameClean = baseParts.slice(0, -1).join('_');
 
-    const newFilename = `${baseNameClean}_${actualFrames}frames_${actualFps}fps${ext}`;
+    const newFilename = `${baseNameClean}_${actualFrames}frames_${filenameFps}fps${ext}`;
     const newPath = path.join(dir, newFilename);
 
     await fs.rename(outputPath, newPath);
