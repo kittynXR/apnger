@@ -836,10 +836,10 @@ export class VideoProcessor {
     const actualFrames = (await fs.readdir(framesDir)).filter(f => f.endsWith('.png')).length;
     console.log(`Extracted ${actualFrames} frames, creating ${gridSize}×${gridSize} sprite sheet`);
 
-    // Calculate actual FPS based on frames extracted and effective duration
-    // This ensures filename metadata matches reality
-    const actualFps = Math.round(actualFrames / effectiveDuration);
-    console.log(`Actual FPS for ${actualFrames} frames over ${effectiveDuration}s: ${actualFps}fps`);
+    // Use targetFps for filename - this is the correct playback FPS
+    // targetFps already accounts for frame reduction if needed
+    const actualFps = targetFps;
+    console.log(`Using ${actualFps}fps for ${actualFrames} frames (duration: ${effectiveDuration}s)`);
 
     // Create a complex filter to tile the frames
     // Use FFmpeg's tile filter which arranges frames in a grid
