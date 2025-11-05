@@ -757,10 +757,15 @@ export class VideoProcessor {
     const sheetSize = 1024;
     const maxFrames = 64; // VRChat sprite sheet limit
 
-    // Calculate total frames from video
-    const sourceTotalFrames = Math.floor(input.duration * input.fps);
+    // Calculate effective duration (accounts for trim if applied)
+    const effectiveDuration = options.trim
+      ? (options.trim.end - options.trim.start)
+      : input.duration;
+
+    // Calculate total frames from TRIMMED video (not original)
+    const sourceTotalFrames = Math.floor(effectiveDuration * input.fps);
     let targetFps = sourceTotalFrames > maxFrames
-      ? maxFrames / input.duration  // Reduce FPS to stay under 64 frames
+      ? maxFrames / effectiveDuration  // Reduce FPS to stay under 64 frames (use trimmed duration)
       : input.fps; // Use original FPS if under limit
 
     // Round targetFps to whole number for cleaner output
