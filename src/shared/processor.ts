@@ -766,14 +766,20 @@ export class VideoProcessor {
       ? (options.trim.end - options.trim.start)
       : input.duration;
 
+    console.log(`[VRC Sprite] input.duration: ${input.duration}s, input.fps: ${input.fps}, effectiveDuration: ${effectiveDuration}s`);
+
     // Calculate total frames from TRIMMED video (not original)
     const sourceTotalFrames = Math.floor(effectiveDuration * input.fps);
+    console.log(`[VRC Sprite] sourceTotalFrames: ${sourceTotalFrames}, maxFrames: ${maxFrames}`);
+
     let targetFps = sourceTotalFrames > maxFrames
       ? maxFrames / effectiveDuration  // Reduce FPS to stay under 64 frames (use trimmed duration)
       : input.fps; // Use original FPS if under limit
 
     // Round targetFps to whole number for cleaner output
     targetFps = Math.round(targetFps);
+    console.log(`[VRC Sprite] targetFps calculated: ${targetFps}`);
+
     const totalFrames = Math.min(sourceTotalFrames, maxFrames);
 
     // Calculate optimal grid size (find the smallest square that fits all frames)
