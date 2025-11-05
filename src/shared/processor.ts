@@ -832,10 +832,15 @@ export class VideoProcessor {
     const actualFrames = (await fs.readdir(framesDir)).filter(f => f.endsWith('.png')).length;
     console.log(`Extracted ${actualFrames} frames, creating ${gridSize}×${gridSize} sprite sheet`);
 
+    // Calculate actual FPS based on frames extracted and effective duration
+    // This ensures filename metadata matches reality
+    const actualFps = Math.round(actualFrames / effectiveDuration);
+    console.log(`Actual FPS for ${actualFrames} frames over ${effectiveDuration}s: ${actualFps}fps`);
+
     // Create a complex filter to tile the frames
     // Use FFmpeg's tile filter which arranges frames in a grid
     await this.runFFmpeg([
-      '-framerate', String(targetFps),
+      '-framerate', String(actualFps),
       '-i', framePattern,
       '-vf', `tile=${gridSize}x${gridSize},scale=${sheetSize}:${sheetSize}`,
       '-frames:v', '1',
@@ -848,10 +853,10 @@ export class VideoProcessor {
     const ext = path.extname(outputPath);
     const basename = path.basename(outputPath, ext);
     const baseParts = basename.split('_');
-    // Remove the format suffix if present (e.g., "_7tv-spritesheet")
+    // Remove the format suffix if present (e.g., "_vrc-spritesheet")
     const baseNameClean = baseParts.slice(0, -1).join('_');
 
-    const newFilename = `${baseNameClean}_${actualFrames}frames_${targetFps}fps${ext}`;
+    const newFilename = `${baseNameClean}_${actualFrames}frames_${actualFps}fps${ext}`;
     const newPath = path.join(dir, newFilename);
 
     await fs.rename(outputPath, newPath);
