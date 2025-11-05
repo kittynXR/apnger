@@ -352,6 +352,8 @@ export class VideoProcessor {
       '-i', input.path,
       '-filter_complex', filterComplex,
       '-map', '[out]',
+      '-r', String(input.fps),      // Force original FPS (critical for sprite sheets)
+      '-vsync', 'cfr',               // Constant frame rate
       '-y', mergedPath
     ]);
 
