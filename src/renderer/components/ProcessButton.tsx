@@ -10,19 +10,37 @@ const ProcessButton: React.FC = () => {
     editMode,
     trimRange,
     segments,
+    videoInfo,
+    cropArea,
     isProcessing,
     setIsProcessing,
     setResults,
     reset: resetStore,
   } = useStore();
 
-  const canProcess = videoFile && outputDir && !isProcessing && enabledFormats.size > 0;
+  // Check if current crop is square
+  const isSquareCrop = cropArea
+    ? Math.abs(cropArea.width - cropArea.height) < 5
+    : videoInfo
+    ? Math.abs(videoInfo.width - videoInfo.height) < 5
+    : false;
+
+  // Formats that require square aspect ratio
+  const squareOnlyFormats = ['twitch', 'discord-sticker', 'discord-emote', 'vrc-spritesheet'];
+
+  // Filter out incompatible formats
+  const compatibleFormats = Array.from(enabledFormats).filter(format => {
+    const requiresSquare = squareOnlyFormats.includes(format);
+    return !requiresSquare || isSquareCrop;
+  });
+
+  const canProcess = videoFile && outputDir && !isProcessing && compatibleFormats.length > 0;
 
   const handleProcess = async () => {
     if (!canProcess || !videoFile || !outputDir) return;
 
-    if (enabledFormats.size === 0) {
-      alert('Please select at least one export format.');
+    if (compatibleFormats.length === 0) {
+      alert('Please select at least one compatible export format. Some formats require square crop.');
       return;
     }
 
@@ -31,8 +49,8 @@ const ProcessButton: React.FC = () => {
 
     try {
       if (window.electronAPI) {
-        // Convert Set to array of format objects
-        const formats = Array.from(enabledFormats).map(name => ({
+        // Convert filtered formats to array of format objects
+        const formats = compatibleFormats.map(name => ({
           name,
           enabled: true,
         }));
@@ -80,7 +98,7 @@ const ProcessButton: React.FC = () => {
         {isProcessing ? (
           <>⏳ Processing...</>
         ) : (
-          <>🚀 Export {enabledFormats.size} Format{enabledFormats.size !== 1 ? 's' : ''}</>
+          <>🚀 Export {compatibleFormats.length} Format{compatibleFormats.length !== 1 ? 's' : ''}</>
         )}
       </button>
 

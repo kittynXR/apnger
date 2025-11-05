@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useStore } from '../store';
 import { EMOTE_SPECS } from '../../shared/types';
 
@@ -14,6 +14,18 @@ const FormatSelector: React.FC = () => {
 
   // Formats that require square aspect ratio
   const squareOnlyFormats = ['twitch', 'discord-sticker', 'discord-emote', 'vrc-spritesheet'];
+
+  // Auto-disable incompatible formats when crop becomes non-square
+  useEffect(() => {
+    if (!isSquareCrop) {
+      // Uncheck any enabled square-only formats
+      squareOnlyFormats.forEach(format => {
+        if (enabledFormats.has(format)) {
+          toggleFormat(format);
+        }
+      });
+    }
+  }, [isSquareCrop]); // Run when square crop status changes
 
   return (
     <div className="format-selector">
