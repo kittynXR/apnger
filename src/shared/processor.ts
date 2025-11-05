@@ -218,8 +218,10 @@ export class VideoProcessor {
 
     // Update input path if we created a merged video
     if (inputPathToUse !== input.path) {
-      // Update input to point to merged video
-      input = { ...input, path: inputPathToUse };
+      // Get metadata for merged video
+      const mergedInfo = await this.getVideoInfo(inputPathToUse);
+      // Update input to point to merged video with correct metadata
+      input = { ...input, path: inputPathToUse, duration: mergedInfo.duration, fps: mergedInfo.fps };
     }
 
     try {
