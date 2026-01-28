@@ -496,31 +496,113 @@ export class VideoProcessor {
     onProgress?: (progress: number) => void
   ): Promise<void> {
     const spec = EMOTE_SPECS.twitch;
-    const palettePath = path.join(tempDir, 'palette_twitch.png');
-    const targetFps = Math.min(input.fps, 30); // Cap at 30fps for smaller size
+    const maxSize = spec.maxSize;
 
-    // Generate palette
-    const paletteFilter = this.buildFilterChain(input, spec.width, spec.height, targetFps, options, spec.maxFrames);
-    const inputArgs = this.buildInputArgs(input.path, options);
-    await this.runFFmpeg([
-      ...inputArgs,
-      '-vf', `${paletteFilter},palettegen=max_colors=256:stats_mode=diff`,
-      '-y', palettePath
-    ]);
+    // Higher-quality defaults, then step down only if we exceed Twitch's 1MB limit.
+    // This helps short/low-frame animations keep maximum quality.
+    const quality = options.quality || 'balanced';
+    let fpsCap = quality === 'maximum'
+      ? Math.min(input.fps, 60)
+      : quality === 'smallest'
+        ? Math.min(input.fps, 20)
+        : Math.min(input.fps, 30);
+    let colors = quality === 'smallest' ? 192 : 256;
+    let bayerScale = quality === 'maximum' ? 5 : quality === 'smallest' ? 2 : 3;
+    let diffMode: string | undefined = quality === 'maximum' ? 'rectangle' : undefined;
 
-    onProgress?.(50);
+    const maxAttempts = 8;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const palettePath = path.join(tempDir, `palette_twitch_${attempt}.png`);
 
-    // Generate GIF with palette
-    const gifFilter = this.buildFilterChain(input, spec.width, spec.height, targetFps, options, spec.maxFrames);
-    const inputArgs2 = this.buildInputArgs(input.path, options);
-    await this.runFFmpeg([
-      ...inputArgs2,
-      '-i', palettePath,
-      '-lavfi', `${gifFilter}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=3`,
-      '-loop', '0',
-      '-y', outputPath
-    ]);
+      console.log(`Twitch attempt ${attempt}: ${spec.width}x${spec.height}, fps<=${fpsCap}, ${colors} colors, bayer_scale=${bayerScale}${diffMode ? `, diff_mode=${diffMode}` : ''}`);
 
+      // Generate palette
+      const paletteFilter = this.buildFilterChain(input, spec.width, spec.height, fpsCap, options, spec.maxFrames);
+      const inputArgs = this.buildInputArgs(input.path, options);
+      await this.runFFmpeg([
+        ...inputArgs,
+        '-vf', `${paletteFilter},palettegen=max_colors=${colors}:stats_mode=diff`,
+        '-y', palettePath
+      ]);
+
+      onProgress?.(40);
+
+      // Generate GIF with palette
+      const gifFilter = this.buildFilterChain(input, spec.width, spec.height, fpsCap, options, spec.maxFrames);
+      let paletteuse = `paletteuse=dither=bayer:bayer_scale=${bayerScale}`;
+      if (diffMode) paletteuse += `:diff_mode=${diffMode}`;
+
+      const inputArgs2 = this.buildInputArgs(input.path, options);
+      await this.runFFmpeg([
+        ...inputArgs2,
+        '-i', palettePath,
+        '-lavfi', `${gifFilter}[x];[x][1:v]${paletteuse}`,
+        '-loop', '0',
+        '-y', outputPath
+      ]);
+
+      const stats = await fs.stat(outputPath);
+      const fileSizeKB = stats.size / 1024;
+      console.log(`Twitch size: ${fileSizeKB.toFixed(2)} KB (target: ${(maxSize / 1024).toFixed(2)} KB)`);
+
+      onProgress?.(80);
+
+      if (stats.size <= maxSize) {
+        onProgress?.(100);
+        try {
+          await fs.unlink(palettePath);
+        } catch {
+          // Ignore cleanup errors
+        }
+        return;
+      }
+
+      // Cleanup palette from failed attempt
+      try {
+        await fs.unlink(palettePath);
+      } catch {
+        // Ignore cleanup errors
+      }
+
+      const previous = { fpsCap, colors, bayerScale, diffMode };
+
+      // Step down settings in a quality-first order
+      if (diffMode) {
+        diffMode = undefined;
+      } else if (bayerScale > 3) {
+        bayerScale = 3;
+      } else if (fpsCap > 30) {
+        fpsCap = 30;
+      } else if (colors > 192) {
+        colors = 192;
+      } else if (fpsCap > 20) {
+        fpsCap = 20;
+      } else if (colors > 128) {
+        colors = 128;
+      } else if (fpsCap > 15) {
+        fpsCap = 15;
+      } else if (colors > 96) {
+        colors = 96;
+      } else {
+        console.warn('Twitch emote is still above 1MB; keeping the last attempt output.');
+        onProgress?.(100);
+        return;
+      }
+
+      const unchanged = (
+        previous.fpsCap === fpsCap &&
+        previous.colors === colors &&
+        previous.bayerScale === bayerScale &&
+        previous.diffMode === diffMode
+      );
+      if (unchanged) {
+        console.warn('Twitch optimization made no further progress; keeping the last attempt output.');
+        onProgress?.(100);
+        return;
+      }
+    }
+
+    console.warn('Twitch emote could not be optimized to target size after attempts; keeping the last attempt output.');
     onProgress?.(100);
   }
 
@@ -538,10 +620,15 @@ export class VideoProcessor {
     const maxSize = spec.maxSize;
 
     // Start with more aggressive settings for Discord's strict 512KB limit
-    let fps = Math.min(input.fps, 10);
+    const quality = options.quality || 'balanced';
+    let fps = quality === 'maximum'
+      ? Math.min(input.fps, 15)
+      : quality === 'smallest'
+        ? Math.min(input.fps, 10)
+        : Math.min(input.fps, 12);
     let width = spec.width;
     let height = spec.height;
-    let colors = 192; // Start lower for better initial compression
+    let colors = quality === 'maximum' ? 256 : quality === 'smallest' ? 128 : 192;
     let compressionLevel = 9;
 
     let attempt = 0;
@@ -633,14 +720,21 @@ export class VideoProcessor {
     const spec = EMOTE_SPECS['discord-emote'];
     const maxSize = spec.maxSize;
 
-    // Start with very aggressive settings due to strict 256KB limit
-    let fps = Math.min(input.fps, 15);
+    // Start settings depend on quality preset; we still iterate down to stay within 256KB.
+    const quality = options.quality || 'balanced';
+    let fps = quality === 'maximum'
+      ? Math.min(input.fps, 30)
+      : quality === 'smallest'
+        ? Math.min(input.fps, 15)
+        : Math.min(input.fps, 20);
     let width = spec.width;
     let height = spec.height;
-    let colors = 128;
+    let colors = quality === 'maximum' ? 256 : quality === 'smallest' ? 128 : 192;
+    let bayerScale = quality === 'maximum' ? 5 : quality === 'smallest' ? 2 : 3;
+    let diffMode: string | undefined = quality === 'maximum' ? 'rectangle' : undefined;
 
     let attempt = 0;
-    const maxAttempts = 10;
+    const maxAttempts = 15;
 
     while (attempt < maxAttempts) {
       attempt++;
@@ -662,10 +756,12 @@ export class VideoProcessor {
       // Generate GIF
       const gifFilter = this.buildFilterChain(input, width, height, fps, options);
       const inputArgs2 = this.buildInputArgs(input.path, options);
+      let paletteuse = `paletteuse=dither=bayer:bayer_scale=${bayerScale}`;
+      if (diffMode) paletteuse += `:diff_mode=${diffMode}`;
       await this.runFFmpeg([
         ...inputArgs2,
         '-i', palettePath,
-        '-lavfi', `${gifFilter}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=2`,
+        '-lavfi', `${gifFilter}[x];[x][1:v]${paletteuse}`,
         '-loop', '0',
         '-y', outputPath
       ]);
@@ -682,15 +778,25 @@ export class VideoProcessor {
       }
 
       // Reduce settings for next attempt
-      if (fps > 10) {
+      if (diffMode) {
+        diffMode = undefined;
+      } else if (bayerScale > 3) {
+        bayerScale = 3;
+      } else if (fps > 20) {
+        fps = Math.max(20, fps - 5);
+      } else if (fps > 15) {
         fps -= 2;
-      } else if (colors > 64) {
-        colors = 64;
+      } else if (colors > 128) {
+        colors = 128;
+      } else if (colors > 96) {
+        colors = 96;
       } else if (width > 96 || height > 96) {
         width = Math.round(width * 0.9);
         height = Math.round(height * 0.9);
-      } else if (fps > 8) {
+      } else if (fps > 10) {
         fps -= 1;
+      } else if (colors > 64) {
+        colors = 64;
       } else {
         // Last resort
         width = Math.round(width * 0.85);
